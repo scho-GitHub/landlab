@@ -407,17 +407,42 @@ class HybridAlluvium(Component):
         self.br_erosion_term = self.K_br * self.q * \
             np.power(self.slope, self.n_sp)
             
-    def run_one_step(self, dt=1.0, flooded_nodes=None, **kwds):
+    def run_one_step(self, dt=1.0, flooded_nodes=None, dynamic_dt = False, 
+                     flow_director=None, **kwds):
         """Calculate change in rock and alluvium thickness for
            a time period 'dt'.
         
         Parameters
         ----------
-        dt : float
+        dt : float (optional, default 1.0)
             Model timestep [T]
-        flooded_nodes : array
+        flooded_nodes : array (optional, default None)
             Indices of flooded nodes, passed from flow router
+        dynamic_dt : boolean (optional, default False)
+            Value to determine if the run_one_step method should use a dynamic
+            dt in order to ensure no negative soil thickness values
+        flow_director : instantiated FlowDirector instance. 
+            Flow director to use for recalculating slopes within the dynamic
+            time stepping routine. 
         """        
+        
+        # Check that if dynamic time-stepping is specified that a FlowDirector
+        # instance has been provided.
+        PERMITTED_DIRECTORS = ['FlowDirectorSteepest',
+                               'FlowDirectorD8',
+                               'FlowDirectorMFD',
+                               'FlowDirectorDINF']
+        if dynamic_dt:
+            if isinstance(flow_director, Component) & ( flow_director._name in PERMITTED_DIRECTORS):
+                pass
+            else:
+                raise ValueError('When dynamic_dt is set to True, an '
+                                 'instantiated FlowDirector must be passed '
+                                 'to the run_one_step method in order for '
+                                 'recalculation of link slopes. This error '
+                                 'indicates that an appropriate FlowDirector '
+                                 'was not passed.')
+        
         #Choose a method for calculating erosion:
         if self.method == 'stochastic_hydrology':        
             self.stochastic_hydrology()        
@@ -445,26 +470,75 @@ class HybridAlluvium(Component):
         deposition_pertime[self.q > 0] = (self.qs[self.q > 0] * \
             (self.v_s / self.q[self.q > 0]))
         
-        #now, the analytical solution to soil thickness in time:
-        #need to distinguish D=kqS from all other cases to save from blowup!
-        soil__depth = self.calculate_soil_depth(dt, deposition_pertime, flooded_nodes)
+        # calculate new soil depth. 
+        soil__depth = self.soil__depth.copy()
+        soil__depth = self.calculate_soil_depth(dt, 
+                                                soil__depth, 
+                                                deposition_pertime, 
+                                                flooded_nodes)
         
-        self.soil__depth[:] = soil__depth.copy()
+        # Default option is to use the supplied dt
+        if dynamic_dt == False:
+            
+            self.soil__depth[:] = soil__depth.copy()
         
-#        # If there is negative soil, raise a warning. This is an indication of 
-#        # timesteps that are too long. 
-#        if np.any(self.soil__depth<0):
-#            raise Warning('Soil depth is negative, this probably means the'
-#                          'timestep is too big in the hybrid alluvium method')
-#        
+            # If there is negative soil, raise a warning. This is an indication 
+            # of timesteps that are too long. 
+            if np.any(self.soil__depth<0):
+                raise Warning('Soil depth is negative, this probably means the'
+                              ' timestep is too big in the hybrid alluvium'
+                              ' method')
+   
+        # an alternative option uses a dynamic dt to ensure that soil thickness
+        # never gets below zero.
+        else: 
+            # if soil depth anywhere is negative, 
+            if np.any(soil__depth<0):
+                all_positive = False
+                number_of_sub_timesteps = 2.
+                while all_positive == False:
+                    sub_dt = dt/number_of_sub_timesteps
+                    for nst in range(number_of_sub_timesteps):
+                        
+                        # calculate soil depth
+                        soil__depth = self.calculate_soil_depth(sub_dt, 
+                                                                soil__depth,
+                                                                deposition_pertime, 
+                                                                flooded_nodes)
+                        
+                        # recalculate slope by re-running the provide FlowDirector
+                        flow_director.run_one_step()
+                        self.slope = self._grid.at_node['topographic__steepest_slope']
+                    
+                    # after re-running the subtimestep, re-check about positive
+                    # soil values
+                    if np.all(soil__depth>=0):
+                        all_positive = True
+                    
+                    if number_of_sub_timesteps>1000:
+                        raise ValueError('dt provided for Hybrid Alluvium '
+                                         'Model is so big that in order to be '
+                                         'stable the dt has been dynamically '
+                                         'subdivided '+str(number_of_sub_timesteps)+
+                                         '. times. Revise paramters with a '
+                                         'more appropriate dt.')
+            
+            # if soil depth as calculated by original dt is always positive, 
+            # return it to the self.soil__depth
+            else:
+                self.soil__depth[:] = soil__depth.copy()
+            
         #finally, determine topography by summing bedrock and soil
         self.topographic__elevation[:] = self.bedrock__elevation + \
             self.soil__depth 
 
-    def calculate_soil_depth(self, dt, deposition_pertime, flooded_nodes):
+    def calculate_soil_depth(self, dt, soil__depth, deposition_pertime, flooded_nodes):
         """Calculate and return soil depth."""
-        soil__depth = self.soil__depth.copy()
         
+        #now, the analytical solution to soil thickness in time:
+        #need to distinguish D=kqS from all other cases to save from blowup!
+        
+        # Identify flooded nodes
         flooded = np.full(self._grid.number_of_nodes, False, dtype=bool)
         flooded[flooded_nodes] = True        
         
