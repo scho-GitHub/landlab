@@ -292,8 +292,9 @@ class HybridAlluvium(Component):
         else:
             raise ValueError('Specify erosion method (simple stream power,\
                             threshold stream power, or stochastic hydrology)!')
-    #three choices for erosion methods:
+            
     def simple_stream_power(self):
+        """Calculate required fields under simple stream power hydrology."""
         if self.method == 'simple_stream_power' and self.discharge_method == None:
             self.q[:] = np.power(self.grid.at_node['drainage_area'], self.m_sp)
         elif self.method == 'simple_stream_power' and self.discharge_method is not None: 
@@ -328,6 +329,7 @@ class HybridAlluvium(Component):
             np.power(self.slope, self.n_sp)
             
     def threshold_stream_power(self):
+        """Calculate required fields under threshold stream power hydrology."""
         if self.method == 'threshold_stream_power' and self.discharge_method == None:
             self.q[:] = np.power(self.grid.at_node['drainage_area'], self.m_sp)
         elif self.method == 'threshold_stream_power' and self.discharge_method is not None:
@@ -366,7 +368,10 @@ class HybridAlluvium(Component):
             (1 - np.exp(-omega_sed / self.sp_crit_sed))
         self.br_erosion_term = omega_br - self.sp_crit_br * \
             (1 - np.exp(-omega_br / self.sp_crit_br))
+            
     def stochastic_hydrology(self):
+        """Calculate required fields under stochastic hydrology."""
+
         if self.method == 'stochastic_hydrology' and self.discharge_method == None:
             raise TypeError('Supply a discharge method to use stoc. hydro!')
         elif self.discharge_method is not None:
@@ -442,10 +447,8 @@ class HybridAlluvium(Component):
         
         #now, the analytical solution to soil thickness in time:
         #need to distinguish D=kqS from all other cases to save from blowup!
-
         soil__depth = self.calculate_soil_depth(dt, deposition_pertime, flooded_nodes)
         
-        #self._grid['soil__depth'][:] = soil__depth.copy()
         self.soil__depth[:] = soil__depth.copy()
         
 #        # If there is negative soil, raise a warning. This is an indication of 
@@ -459,8 +462,7 @@ class HybridAlluvium(Component):
             self.soil__depth 
 
     def calculate_soil_depth(self, dt, deposition_pertime, flooded_nodes):
-        """
-        """
+        """Calculate and return soil depth."""
         soil__depth = self.soil__depth.copy()
         
         flooded = np.full(self._grid.number_of_nodes, False, dtype=bool)
