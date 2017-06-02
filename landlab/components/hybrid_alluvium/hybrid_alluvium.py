@@ -479,9 +479,7 @@ class HybridAlluvium(Component):
         
         # Default option is to use the supplied dt
         if dynamic_dt == False:
-            
             self.soil__depth[:] = soil__depth.copy()
-        
             # If there is negative soil, raise a warning. This is an indication 
             # of timesteps that are too long. 
             if np.any(self.soil__depth<0):
@@ -505,15 +503,30 @@ class HybridAlluvium(Component):
                                                                 soil__depth,
                                                                 deposition_pertime, 
                                                                 flooded_nodes)
+                        if np.any(soil__depth<0):
+                            # after each sub-itteration check the soil depths
+                            # if at this sub timestep size soil depth has gone 
+                            # negative, break, don't finish this attempted itteration
+                            # and move on to an attempt with a smaller dt size. 
+                            break
                         
                         # recalculate slope by re-running the provide FlowDirector
+                        
+                       # slope needs to be taken out and made a local variable because
+                        #when itterations re-start it (and the other values re-written by
+                        #the flow directiors run_one_step needs to go back to the original values. 
+                        
                         flow_director.run_one_step()
                         self.slope = self._grid.at_node['topographic__steepest_slope']
                     
                     # after re-running the subtimestep, re-check about positive
                     # soil values
                     if np.all(soil__depth>=0):
+                        # if all soil depths are positive, exit the loop. 
                         all_positive = True
+                    else:
+                        # otherwise, double the number of sub-timesteps. 
+                        number_of_sub_timesteps = number_of_sub_timesteps*2
                     
                     if number_of_sub_timesteps>1000:
                         raise ValueError('dt provided for Hybrid Alluvium '
