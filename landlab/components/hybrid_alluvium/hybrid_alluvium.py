@@ -495,6 +495,12 @@ class HybridAlluvium(Component):
             (-self.br_erosion_term[self.q > 0] * \
             (np.exp(-self.soil__depth[self.q > 0] / self.H_star)))
         
+        # If there is negative soil, raise a warning. This is an indication of 
+        # timesteps that are too long. 
+        if np.any(self.soil__depth<0):
+            raise Warning('Soil depth is negative, this probably means the'
+                          'timestep is too big in the hybrid alluvium method')
+        
         #finally, determine topography by summing bedrock and soil
         self.topographic__elevation[:] = self.bedrock__elevation + \
             self.soil__depth 
