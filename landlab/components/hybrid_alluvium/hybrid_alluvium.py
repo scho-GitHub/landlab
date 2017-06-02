@@ -401,6 +401,7 @@ class HybridAlluvium(Component):
             np.power(self.slope, self.n_sp)
         self.br_erosion_term = self.K_br * self.q * \
             np.power(self.slope, self.n_sp)
+            
     def run_one_step(self, dt=1.0, flooded_nodes=None, **kwds):
         """Calculate change in rock and alluvium thickness for
            a time period 'dt'.
@@ -441,6 +442,26 @@ class HybridAlluvium(Component):
         
         #now, the analytical solution to soil thickness in time:
         #need to distinguish D=kqS from all other cases to save from blowup!
+
+        soil__depth = self.calculate_soil_depth(dt, deposition_pertime, flooded_nodes)
+        
+        #self._grid['soil__depth'][:] = soil__depth.copy()
+        self.soil__depth[:] = soil__depth.copy()
+        
+#        # If there is negative soil, raise a warning. This is an indication of 
+#        # timesteps that are too long. 
+#        if np.any(self.soil__depth<0):
+#            raise Warning('Soil depth is negative, this probably means the'
+#                          'timestep is too big in the hybrid alluvium method')
+#        
+        #finally, determine topography by summing bedrock and soil
+        self.topographic__elevation[:] = self.bedrock__elevation + \
+            self.soil__depth 
+
+    def calculate_soil_depth(self, dt, deposition_pertime, flooded_nodes):
+        """
+        """
+        soil__depth = self.soil__depth.copy()
         
         flooded = np.full(self._grid.number_of_nodes, False, dtype=bool)
         flooded[flooded_nodes] = True        
@@ -452,26 +473,26 @@ class HybridAlluvium(Component):
         #positive slopes, not flooded
         selected_nodes = (self.q > 0) & (blowup==True) & (self.slope > 0) & \
             (flooded==False)
-        self.soil__depth[selected_nodes] = self.H_star * \
+        soil__depth[selected_nodes] = self.H_star * \
             np.log((self.sed_erosion_term[selected_nodes] / self.H_star) * dt + \
             np.exp(self.soil__depth[selected_nodes] / self.H_star))
             
         #positive slopes, flooded
         selected_nodes = (self.q > 0) & (blowup==True) & (self.slope > 0) & \
             (flooded==True)
-        self.soil__depth[selected_nodes] = (deposition_pertime[selected_nodes] / (1 - self.phi)) * dt   
+        soil__depth[selected_nodes] = (deposition_pertime[selected_nodes] / (1 - self.phi)) * dt   
                         
         #non-positive slopes, not flooded
         selected_nodes = (self.q > 0) & (blowup==True) & (self.slope <= 0) & \
             (flooded==False)
-        self.soil__depth[selected_nodes] += (deposition_pertime[selected_nodes] / \
+        soil__depth[selected_nodes] += (deposition_pertime[selected_nodes] / \
             (1 - self.phi)) * dt    
         
         ##more general case:
         #positive slopes, not flooded
         selected_nodes = (self.q > 0) & (blowup==False) & (self.slope > 0) & \
             (flooded==False)
-        self.soil__depth[selected_nodes] = self.H_star * \
+        soil__depth[selected_nodes] = self.H_star * \
             np.log((1 / ((deposition_pertime[selected_nodes] * (1 - self.phi)) / \
             (self.sed_erosion_term[selected_nodes]) - 1)) * \
             (np.exp((deposition_pertime[selected_nodes] * (1 - self.phi) - \
@@ -483,24 +504,17 @@ class HybridAlluvium(Component):
         #places where slope <= 0 but not flooded:
         selected_nodes = (self.q > 0) & (blowup==False) & (self.slope <= 0) & \
             (flooded==False)
-        self.soil__depth[selected_nodes] += (deposition_pertime[selected_nodes] / \
+        soil__depth[selected_nodes] += (deposition_pertime[selected_nodes] / \
             (1 - self.phi)) * dt     
                         
         #flooded nodes:
         selected_nodes = (self.q > 0) & (blowup==False) & (flooded==True)
-        self.soil__depth[selected_nodes] += \
+        soil__depth[selected_nodes] += \
             (deposition_pertime[selected_nodes] / (1 - self.phi)) * dt     
 
         self.bedrock__elevation[self.q > 0] += dt * \
             (-self.br_erosion_term[self.q > 0] * \
             (np.exp(-self.soil__depth[self.q > 0] / self.H_star)))
         
-        # If there is negative soil, raise a warning. This is an indication of 
-        # timesteps that are too long. 
-        if np.any(self.soil__depth<0):
-            raise Warning('Soil depth is negative, this probably means the'
-                          'timestep is too big in the hybrid alluvium method')
-        
-        #finally, determine topography by summing bedrock and soil
-        self.topographic__elevation[:] = self.bedrock__elevation + \
-            self.soil__depth 
+        return soil__depth
+    
