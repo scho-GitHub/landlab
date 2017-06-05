@@ -508,6 +508,8 @@ class HybridAlluvium(Component):
                     flow__sink_flag_orig = self._grid['node']['flow__sink_flag'].copy()
                     
                     for nst in range(number_of_sub_timesteps):
+                        # run flow director, this will update the slopes, etc. 
+                        flow_director.run_one_step()
                         
                         # update hydrology and erosion terms
                         self._calculate_erosion_terms_from_hydrology()
@@ -538,9 +540,6 @@ class HybridAlluvium(Component):
                                                        self.bedrock__elevation[self.is_not_closed] + \
                                                        self.soil__depth[self.is_not_closed]
                             
-                            # run flow director, this will update the slopes, etc. 
-                            flow_director.run_one_step()
-                    
                     # after re-running the subtimestep, re-check about positive
                     # soil values
                     if np.all(soil__depth>=0) or np.any(np.isnan(soil__depth)):
