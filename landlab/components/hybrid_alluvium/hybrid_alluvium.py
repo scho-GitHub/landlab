@@ -412,7 +412,7 @@ class HybridAlluvium(Component):
             np.power(self.slope, self.n_sp)
             
     def run_one_step(self, dt=1.0, flooded_nodes=None, dynamic_dt = False, 
-                     flow_director=None, **kwds):
+                     flow_director=None, slope_thresh=1.0, **kwds):
         """Calculate change in rock and alluvium thickness for
            a time period 'dt'.
         
@@ -461,6 +461,9 @@ class HybridAlluvium(Component):
                                                 self.deposition_pertime, 
                                                 flooded_nodes)
         
+        bedrock__elevation = self.bedrock__elevation.copy()
+        bedrock__elevation = self._update_bedrock_elevation(dt, bedrock__elevation, soil__depth)
+        
         # Default option is to use the supplied dt
         if dynamic_dt == False:
             
@@ -468,22 +471,61 @@ class HybridAlluvium(Component):
             self.soil__depth[:] = soil__depth.copy()
             
             # update bedrock elevation
-            self._update_bedrock_elevation(dt)
+            self.bedrock__elevation[:] = bedrock__elevation.copy()
             
+            # update topographic elevation by summing bedrock and soil
+            self.topographic__elevation[self.is_not_closed] = self.bedrock__elevation[self.is_not_closed] + \
+                                                              self.soil__depth[self.is_not_closed] 
+                                                              
             # If there is negative soil, raise a warning. This is an indication 
             # of timesteps that are too long. 
             if np.any(self.soil__depth<0):
                 raise Warning('Soil depth is negative, this probably means the'
                               ' timestep is too big in the hybrid alluvium'
                               ' method')
+                
+            # if slopes are too steep, raise a warning. Technically the slopes
+            # will be steeper by the time the warning is raised since the flow
+            # director has not been re-run since the elevations have changed in
+            # the time step. 
+            if np.any(self._grid['node']['topographic__steepest_slope'] > slope_thresh):
+                raise Warning('Topographic slopes are exceeding the slope '
+                              'threshold in the hybrid alluvium component'
+                              'it is recommended that you use a shorter or '
+                              'dynamic timestep')
    
         # an alternative option uses a dynamic dt to ensure that soil thickness
         # never gets below zero.
         else: 
+            # get original bedrock elevation and soil depth
+            bedrock__elevation_orig = self.bedrock__elevation.copy()
+            soil__depth_orig = self.soil__depth.copy()
             
-            # if soil depth anywhere is negative or NAN, enter the dynamic time
-            # option
-            if np.any(soil__depth<0) or np.any(np.isnan(soil__depth)):
+            # get original values of fields that the flow director will overwrite. 
+            topographic__elevation_orig = self._grid['node']['topographic__elevation'].copy()
+            flow__receiver_node_orig = self._grid['node']['flow__receiver_node'].copy()
+            topographic__steepest_slope_orig = self._grid['node']['topographic__steepest_slope'].copy()
+            flow__link_to_receiver_node_orig = self._grid['node']['flow__link_to_receiver_node'].copy()
+            flow__sink_flag_orig = self._grid['node']['flow__sink_flag'].copy()
+            
+            # set soil depth to the calcuated value
+            self.soil__depth[:] = soil__depth.copy()
+            
+            # update bedrock elevation
+            self.bedrock__elevation[:] = bedrock__elevation.copy()
+            
+            # update topographic elevation by summing bedrock and soil
+            self.topographic__elevation[self.is_not_closed] = self.bedrock__elevation[self.is_not_closed] + \
+                                                              self.soil__depth[self.is_not_closed] 
+            # run the flow  this will update the slopes, etc.
+            flow_director.run_one_step()
+            
+            # identify where slopes are too steep. 
+            too_steep = self.slope > slope_thresh
+            
+            # if soil depth anywhere is negative or NAN, or if slopes are too
+            # steep, the  enter the dynamic time option
+            if np.any(soil__depth<0) or np.any(np.isnan(soil__depth)) or np.any(too_steep):
                 
                 print('dynamicTime!')
                 
@@ -495,22 +537,12 @@ class HybridAlluvium(Component):
                     # calculate number of sub_timesteps
                     sub_dt = float(dt)/number_of_sub_timesteps
                     self.sub_dt = sub_dt
-                    
-                    # get original bedrock elevation and soil depth
-                    bedrock__elevation_orig = self.bedrock__elevation.copy()
-                    soil__depth_orig = self.soil__depth.copy()
-                    
-                    # get original values of fields that the flow director will overwrite. 
-                    topographic__elevation_orig = self._grid['node']['topographic__elevation'].copy()
-                    flow__receiver_node_orig = self._grid['node']['flow__receiver_node'].copy()
-                    topographic__steepest_slope_orig = self._grid['node']['topographic__steepest_slope'].copy()
-                    flow__link_to_receiver_node_orig = self._grid['node']['flow__link_to_receiver_node'].copy()
-                    flow__sink_flag_orig = self._grid['node']['flow__sink_flag'].copy()
-                    
+                    print('trying timesteps of', sub_dt)
                     for nst in range(number_of_sub_timesteps):
-                        # run flow director, this will update the slopes, etc. 
-                        flow_director.run_one_step()
                         
+                        if nst == 1 and number_of_sub_timesteps>2:
+                            flow_director.run_one_step()
+                            
                         # update hydrology and erosion terms
                         self._calculate_erosion_terms_from_hydrology()
                         
@@ -518,34 +550,44 @@ class HybridAlluvium(Component):
                         self._calculate_qs_in_and_deposition_rate()
                         
                         # calculate soil depth
-                        soil__depth = self.calculate_soil_depth(sub_dt, 
+                        self.soil__depth[:] = self.calculate_soil_depth(sub_dt, 
                                                                 soil__depth,
                                                                 self.deposition_pertime, 
                                                                 flooded_nodes)
-                        if np.any(soil__depth<0) or np.any(np.isnan(soil__depth)):
+                        # calculate bedrock elevation
+                        self.bedrock__elevation[:] = self._update_bedrock_elevation(sub_dt, bedrock__elevation, soil__depth)
+                        
+                        # update topographic elevation by summing bedrock and soil
+                        self.topographic__elevation[self.is_not_closed] = self.bedrock__elevation[self.is_not_closed] + \
+                                                                          self.soil__depth[self.is_not_closed] 
+                        
+                        # run flow director, this will update the slopes, etc. 
+                        flow_director.run_one_step()
+                        
+                        # identify where slopes are too steep. 
+                        too_steep = self.slope > slope_thresh
+                        
+                        if np.any(soil__depth<0) or np.any(np.isnan(soil__depth)) or np.any(too_steep):
                             # after each sub-itteration check the soil depths
                             # if at this sub timestep size soil depth has gone 
                             # negative, break, don't finish this attempted itteration
                             # and move on to an attempt with a smaller dt size. 
                             break
                         
-                        # if all soil depths are still above zero, 
-                        # recalculate slope by re-running the provide FlowDirector
+                        # if all soil depths are still above zero and not nan,
+                        # and slopes are not too steep. continue
                         else:
-                            # calculate bedrock_elevation
-                            self._update_bedrock_elevation(sub_dt)
-                            
-                            # update topographic__elevation within the sub loop
-                            self.topographic__elevation[self.is_not_closed] = \
-                                                       self.bedrock__elevation[self.is_not_closed] + \
-                                                       self.soil__depth[self.is_not_closed]
+                            pass
                             
                     # after re-running the subtimestep, re-check about positive
                     # soil values
-                    if np.all(soil__depth>=0) or np.any(np.isnan(soil__depth)):
+                    if np.all(soil__depth>=0) and np.any(np.isnan(soil__depth)) and np.sum(too_steep)==0:
                         # if all soil depths are positive, exit the loop. 
                         all_positive = True
+                        print('suceeded with timesteps of ', sub_dt)
                     else:
+                        print('failed before reaching the end of the itterations with timesteps of ', sub_dt)
+                        print('got through ', nst, ' subtimesteps before failing')
                         # otherwise, double the number of sub-timesteps. 
                         number_of_sub_timesteps = number_of_sub_timesteps*2
                         
@@ -559,7 +601,7 @@ class HybridAlluvium(Component):
                         self._grid['node']['flow__link_to_receiver_node'][:] = flow__link_to_receiver_node_orig.copy()
                         self._grid['node']['flow__sink_flag'][:] = flow__sink_flag_orig.copy()
                     
-                    if number_of_sub_timesteps>1000:
+                    if number_of_sub_timesteps>4000:
                         raise ValueError('dt provided for Hybrid Alluvium '
                                          'Model is so big that in order to be '
                                          'stable the dt has been dynamically '
@@ -567,16 +609,14 @@ class HybridAlluvium(Component):
                                          '. times. Revise paramters with a '
                                          'more appropriate dt.')
             
-            # if soil depth as calculated by original dt is always positive, 
-            # return it to the self.soil__depth
+            # if soil depth as calculated by original dt is always positive,
+            # and the slopes are stable, continue. 
             else:
-                print('still positive')
-                self.soil__depth[:] = soil__depth.copy()
-                self._update_bedrock_elevation(dt)
+                print('still stable')
+                pass
+            
         
-        #finally, determine topography by summing bedrock and soil
-        self.topographic__elevation[self.is_not_closed] = self.bedrock__elevation[self.is_not_closed] + \
-            self.soil__depth[self.is_not_closed] 
+
 
     def calculate_soil_depth(self, dt, soil__depth, deposition_pertime, flooded_nodes):
         """Calculate and return soil depth."""
@@ -648,11 +688,12 @@ class HybridAlluvium(Component):
         else:
             raise ValueError('Specify an erosion method!')
     
-    def _update_bedrock_elevation(self, dt):
+    def _update_bedrock_elevation(self, dt, bedrock__elevation, soil__depth):
         """Update bedrock elevation."""
-        self.bedrock__elevation[self.q > 0 & self.is_not_closed] += dt * \
+        bedrock__elevation[self.q > 0 & self.is_not_closed] += dt * \
                                (-self.br_erosion_term[self.q > 0 & self.is_not_closed] * \
-                                (np.exp(-self.soil__depth[self.q > 0 & self.is_not_closed] / self.H_star)))
+                                (np.exp(-soil__depth[self.q > 0 & self.is_not_closed] / self.H_star)))
+        return bedrock__elevation
                                
     def _calculate_qs_in_and_deposition_rate(self):
         """Calculate qs_in and deposition through time."""
