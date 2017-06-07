@@ -724,18 +724,18 @@ class HybridAlluvium(Component):
         """Calculate qs_in and deposition through time."""
          # instantiate a grid for qs_in
         self.qs_in = np.zeros(self.grid.number_of_nodes)            
-         
-        #iterate top to bottom through the stack, calculate qs
-        for j in np.flipud(self.stack):
-            if self.q[j] == 0:
-                self.qs[j] = 0
-            else:
-                self.qs[j] = (((self.Es[j]) + (1-self.F_f) * self.Er[j]) / \
-                    (self.v_s / self.q[j])) * (1.0 - \
-                    np.exp(-self.link_lengths[j] * self.v_s / self.q[j])) + \
-                    (self.qs_in[j] * np.exp(-self.link_lengths[j] * \
-                    self.v_s / self.q[j]))
-            self.qs_in[self.flow_receivers[j]] += self.qs[j]
+          
+        # cythonized version of calculating qs_in
+        calculate_qs_in(np.flipud(self.stack),
+                        self.flow_receivers,
+                        self.link_lengths,
+                        self.q,
+                        self.qs,
+                        self.qs_in,
+                        self.Es,
+                        self.Er,
+                        self.v_s,
+                        self.F_f)
         
         # create a variable for deposition per time
         self.deposition_pertime = np.zeros(self.grid.number_of_nodes)
