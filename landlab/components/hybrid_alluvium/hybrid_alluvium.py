@@ -502,7 +502,7 @@ class HybridAlluvium(Component):
             # will be steeper by the time the warning is raised since the flow
             # director has not been re-run since the elevations have changed in
             # the time step. 
-            if np.any(self._grid['node']['topographic__steepest_slope'] > slope_thresh):
+            if np.any(self.slope > slope_thresh):
                 raise Warning('Topographic slopes are exceeding the slope '
                               'threshold in the hybrid alluvium component'
                               'it is recommended that you use a shorter or '
@@ -616,26 +616,32 @@ class HybridAlluvium(Component):
                         if np.any(np.isnan(soil__depth)):
                             print('nan soil')
                         print('\n')
-                        # otherwise, double the number of sub-timesteps. 
-                        number_of_sub_timesteps = number_of_sub_timesteps*2
                         
-                        # and put back topography and slopes from before dynamic
-                        # timestepping was attempted
-                        self.bedrock__elevation[:] = bedrock__elevation_orig.copy()
-                        self.soil__depth[:] = soil__depth_orig.copy()
-                        self._grid['node']['topographic__elevation'][:] = topographic__elevation_orig.copy()
-                        self._grid['node']['flow__receiver_node'][:] = flow__receiver_node_orig.copy()
-                        self._grid['node']['topographic__steepest_slope'][:] = topographic__steepest_slope_orig.copy()
-                        self._grid['node']['flow__link_to_receiver_node'][:] = flow__link_to_receiver_node_orig.copy()
-                        self._grid['node']['flow__sink_flag'][:] = flow__sink_flag_orig.copy()
+                        
+                        
+                        if number_of_sub_timesteps>1000:
+                            raise ValueError('dt provided for Hybrid Alluvium '
+                                             'Model is so big that in order to be '
+                                             'stable the dt has been dynamically '
+                                             'subdivided '+str(number_of_sub_timesteps)+
+                                             '. times. Revise paramters with a '
+                                             'more appropriate dt.')
+                        else:
+                            
+                            # otherwise, double the number of sub-timesteps. 
+                            number_of_sub_timesteps = number_of_sub_timesteps*2
+                            
+                            # and put back topography and slopes from before dynamic
+                            # timestepping was attempted
+                            self.bedrock__elevation[:] = bedrock__elevation_orig.copy()
+                            self.soil__depth[:] = soil__depth_orig.copy()
+                            self._grid['node']['topographic__elevation'][:] = topographic__elevation_orig.copy()
+                            self._grid['node']['flow__receiver_node'][:] = flow__receiver_node_orig.copy()
+                            self._grid['node']['topographic__steepest_slope'][:] = topographic__steepest_slope_orig.copy()
+                            self._grid['node']['flow__link_to_receiver_node'][:] = flow__link_to_receiver_node_orig.copy()
+                            self._grid['node']['flow__sink_flag'][:] = flow__sink_flag_orig.copy()
+                        
                     
-                    if number_of_sub_timesteps>1000:
-                        raise ValueError('dt provided for Hybrid Alluvium '
-                                         'Model is so big that in order to be '
-                                         'stable the dt has been dynamically '
-                                         'subdivided '+str(number_of_sub_timesteps)+
-                                         '. times. Revise paramters with a '
-                                         'more appropriate dt.')
             
             # if soil depth as calculated by original dt is always positive,
             # and the slopes are stable, continue. 
