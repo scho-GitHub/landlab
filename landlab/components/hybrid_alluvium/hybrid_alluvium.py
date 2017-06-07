@@ -1,6 +1,7 @@
 import numpy as np
 from landlab import Component
 from landlab import CLOSED_BOUNDARY
+from .cfuncs import calculate_qs_in
 
 class HybridAlluvium(Component):
     """
@@ -422,7 +423,7 @@ class HybridAlluvium(Component):
             np.power(self.slope, self.n_sp)
             
     def run_one_step(self, dt=1.0, flooded_nodes=None, dynamic_dt = False, 
-                     flow_director=None, slope_thresh=1.0, **kwds):
+                     flow_director=None, slope_thresh=np.tan(np.deg2rad(35)), **kwds):
         """Calculate change in rock and alluvium thickness for
            a time period 'dt'.
         
@@ -438,6 +439,9 @@ class HybridAlluvium(Component):
         flow_director : instantiated FlowDirector instance. 
             Flow director to use for recalculating slopes within the dynamic
             time stepping routine. 
+        slope_thresh : float (optional, default 0.839)
+            Threshold for numerical stability of slopes in dynamic timestep
+            routine. Set to not permit slopes of greater than 40 degrees.
         """        
         
         # Check that if dynamic time-stepping is specified that a FlowDirector
@@ -517,7 +521,7 @@ class HybridAlluvium(Component):
             topographic__steepest_slope_orig = self._grid['node']['topographic__steepest_slope'].copy()
             flow__link_to_receiver_node_orig = self._grid['node']['flow__link_to_receiver_node'].copy()
             flow__sink_flag_orig = self._grid['node']['flow__sink_flag'].copy()
-            
+
             # set soil depth to the calcuated value
             self.soil__depth[:] = soil__depth.copy()
             
@@ -532,6 +536,7 @@ class HybridAlluvium(Component):
             
             # identify where slopes are too steep. 
             too_steep = self.slope > slope_thresh
+            too_steep[self.is_not_closed == False] = False
             
             # if soil depth anywhere is negative or NAN, or if slopes are too
             # steep, the  enter the dynamic time option
@@ -561,11 +566,13 @@ class HybridAlluvium(Component):
                         
                         # calculate soil depth
                         self.soil__depth[:] = self.calculate_soil_depth(sub_dt, 
-                                                                soil__depth,
+                                                                self.soil__depth,
                                                                 self.deposition_pertime, 
                                                                 flooded_nodes)
                         # calculate bedrock elevation
-                        self.bedrock__elevation[:] = self._update_bedrock_elevation(sub_dt, bedrock__elevation, soil__depth)
+                        self.bedrock__elevation[:] = self._update_bedrock_elevation(sub_dt, 
+                                                                                    self.bedrock__elevation, 
+                                                                                    self.soil__depth)
                         
                         # update topographic elevation by summing bedrock and soil
                         self.topographic__elevation[self.is_not_closed] = self.bedrock__elevation[self.is_not_closed] + \
@@ -576,6 +583,7 @@ class HybridAlluvium(Component):
                         
                         # identify where slopes are too steep. 
                         too_steep = self.slope > slope_thresh
+                        too_steep[self.is_not_closed == False] = False
                         
                         if np.any(soil__depth<0) or np.any(np.isnan(soil__depth)) or np.any(too_steep):
                             # after each sub-itteration check the soil depths
@@ -591,13 +599,23 @@ class HybridAlluvium(Component):
                             
                     # after re-running the subtimestep, re-check about positive
                     # soil values
-                    if np.all(soil__depth>=0) and np.any(np.isnan(soil__depth)) and np.sum(too_steep)==0:
+                    if np.all(self.soil__depth>=0) and np.any(np.isnan(self.soil__depth)) and np.sum(too_steep)==0:
                         # if all soil depths are positive, exit the loop. 
                         all_positive = True
                         print('suceeded with timesteps of ', sub_dt)
                     else:
                         print('failed before reaching the end of the itterations with timesteps of ', sub_dt)
-                        print('got through ', nst, ' subtimesteps before failing')
+                        print('got through ', nst, ' out of', number_of_sub_timesteps, 'subtimesteps before failing')
+                        print('thats ', (nst)/number_of_sub_timesteps*100., '%')
+                        
+                        if np.sum(too_steep)>0:
+                            print(np.sum(too_steep), ' slopes were too steep')
+                            print(self.slope[too_steep])
+                        if np.any(soil__depth<0):
+                            print('soil negative')
+                        if np.any(np.isnan(soil__depth)):
+                            print('nan soil')
+                        print('\n')
                         # otherwise, double the number of sub-timesteps. 
                         number_of_sub_timesteps = number_of_sub_timesteps*2
                         
@@ -611,7 +629,7 @@ class HybridAlluvium(Component):
                         self._grid['node']['flow__link_to_receiver_node'][:] = flow__link_to_receiver_node_orig.copy()
                         self._grid['node']['flow__sink_flag'][:] = flow__sink_flag_orig.copy()
                     
-                    if number_of_sub_timesteps>4000:
+                    if number_of_sub_timesteps>1000:
                         raise ValueError('dt provided for Hybrid Alluvium '
                                          'Model is so big that in order to be '
                                          'stable the dt has been dynamically '
@@ -706,7 +724,7 @@ class HybridAlluvium(Component):
         """Calculate qs_in and deposition through time."""
          # instantiate a grid for qs_in
         self.qs_in = np.zeros(self.grid.number_of_nodes)            
-            
+         
         #iterate top to bottom through the stack, calculate qs
         for j in np.flipud(self.stack):
             if self.q[j] == 0:
