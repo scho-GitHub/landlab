@@ -423,7 +423,7 @@ class HybridAlluvium(Component):
             np.power(self.slope, self.n_sp)
             
     def run_one_step(self, dt=1.0, flooded_nodes=None, dynamic_dt = False, 
-                     flow_director=None, slope_thresh=np.tan(np.deg2rad(35)), **kwds):
+                     flow_director=None, slope_thresh=np.tan(np.deg2rad(40)), **kwds):
         """Calculate change in rock and alluvium thickness for
            a time period 'dt'.
         
@@ -566,15 +566,20 @@ class HybridAlluvium(Component):
                         
                         # calculate soil depth
                         self.soil__depth[:] = self.calculate_soil_depth(sub_dt, 
-                                                                self.soil__depth,
-                                                                self.deposition_pertime, 
-                                                                flooded_nodes)
+                                                                        self.soil__depth,
+                                                                        self.deposition_pertime, 
+                                                                        flooded_nodes)
                         # calculate bedrock elevation
                         self.bedrock__elevation[:] = self._update_bedrock_elevation(sub_dt, 
                                                                                     self.bedrock__elevation, 
                                                                                     self.soil__depth)
                         
                         # update topographic elevation by summing bedrock and soil
+                        self.topographic_change = np.zeros_like(self.bedrock__elevation)
+                        self.topographic_change[self.is_not_closed] = (self.bedrock__elevation[self.is_not_closed] + \
+                                              self.soil__depth[self.is_not_closed] ) - \
+                                              self.topographic__elevation[self.is_not_closed]
+                        
                         self.topographic__elevation[self.is_not_closed] = self.bedrock__elevation[self.is_not_closed] + \
                                                                           self.soil__depth[self.is_not_closed] 
                         
@@ -611,6 +616,7 @@ class HybridAlluvium(Component):
                         if np.sum(too_steep)>0:
                             print(np.sum(too_steep), ' slopes were too steep')
                             print(self.slope[too_steep])
+                            print(topographic__steepest_slope_orig[too_steep])
                         if np.any(soil__depth<0):
                             print('soil negative')
                         if np.any(np.isnan(soil__depth)):
@@ -619,7 +625,7 @@ class HybridAlluvium(Component):
                         
                         
                         
-                        if number_of_sub_timesteps>1000:
+                        if number_of_sub_timesteps>500:
                             raise ValueError('dt provided for Hybrid Alluvium '
                                              'Model is so big that in order to be '
                                              'stable the dt has been dynamically '
@@ -647,6 +653,7 @@ class HybridAlluvium(Component):
             # and the slopes are stable, continue. 
             else:
                 print('still stable')
+                print('steepest slope is', self.slope.max())
                 pass
             
     def calculate_soil_depth(self, dt, soil__depth, deposition_pertime, flooded_nodes):
