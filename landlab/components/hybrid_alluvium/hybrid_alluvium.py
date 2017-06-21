@@ -1,7 +1,7 @@
 import numpy as np
 from landlab import Component
 from .cfuncs import calculate_qs_in
-from scipy.optimize import fsolve
+from scipy.optimize import root
 
 class HybridAlluvium(Component):
     """
@@ -317,17 +317,18 @@ class HybridAlluvium(Component):
             
         # make a first guess at the value for qs. 
         self.qs_in = np.zeros(self.grid.number_of_nodes)
+        
         calculate_qs_in(np.flipud(self.stack),
-                                  self.flow_receivers,
-                                  self.grid.node_spacing,
-                                  self.q,
-                                  self.qs,
-                                  self.qs_in,
-                                  self.Es,
-                                  self.Er,
-                                  self.v_s,
-                                  self.F_f)
-            
+                        self.flow_receivers,
+                        self.grid.node_spacing,
+                        self.q,
+                        self.qs,
+                        self.qs_in,
+                        self.Es,
+                        self.Er,
+                        self.v_s,
+                        self.F_f)
+#            
   #three choices for erosion methods:
     def simple_stream_power(self):
         """Calculate hydrology terms under simple stream power. """
@@ -453,7 +454,14 @@ class HybridAlluvium(Component):
         self.br_erosion_term = self.K_br * self.lil_q * \
             np.power(self.slope, self.n_sp)
     
-    def run_one_step(self, dt=1.0, flooded_nodes=None, global_solve=False, **kwds):
+    def run_one_step(self, 
+                     dt=1.0, 
+                     flooded_nodes=None, 
+                     H_boundary_condition_inds=[],
+                     eta_boundary_condition_inds=[], 
+                     qs_boundary_condition_inds=[], 
+                     global_solve=False, **kwds):
+        
         """Calculate change in rock and alluvium thickness for
            a time period 'dt'.
         
@@ -473,35 +481,34 @@ class HybridAlluvium(Component):
             self.threshold_stream_power()
         else:
             raise ValueError('Specify an erosion method!')
-            
-        self.qs_in[:] = 0# np.zeros(self.grid.number_of_nodes)            
-        #iterate top to bottom through the stack, calculate qs
-        # cythonized version of calculating qs_in
-        calculate_qs_in(np.flipud(self.stack),
-                        self.flow_receivers,
-                        self.grid.node_spacing,
-                        self.q,
-                        self.qs,
-                        self.qs_in,
-                        self.Es,
-                        self.Er,
-                        self.v_s,
-                        self.F_f)
-    
-        deposition_pertime = np.zeros(self.grid.number_of_nodes)
-        deposition_pertime[self.q > 0] = (self.qs[self.q > 0] * \
-                                         (self.v_s / self.q[self.q > 0]))
-
+        
+        flooded = np.full(self._grid.number_of_nodes, False, dtype=bool)
+        flooded[flooded_nodes] = True    
+        
         if global_solve:
             #now, the analytical solution to soil thickness in time:
             #need to distinguish D=kqS from all other cases to save from blowup!        
             # use present values as the initial guess. 
             
-            v0 = np.concatenate((self.soil__depth, self.bedrock__elevation, self.qs), axis=0)
+            # need to permit some nodes to be the boundary condition. 
+            s_d = self.soil__depth.copy()
+            b_e = self.bedrock__elevation.copy()
+            qs = self.qs.copy()
+            
+            H_bc = list(s_d[H_boundary_condition_inds])
+            s_d = np.delete(s_d, H_boundary_condition_inds)
+            
+            eta_bbc = list(b_e[eta_boundary_condition_inds])
+            b_e = np.delete(b_e, eta_boundary_condition_inds)
+            
+            qs_bc = list(qs[qs_boundary_condition_inds])
+            qs = np.delete(qs, qs_boundary_condition_inds)
+            
+            v0 = np.concatenate((s_d, b_e, qs), axis=0)
             #distinguish cases:
     
             # solve using fsolve
-            v = fsolve(hybrid_H_etab_Qs_solver,
+            self.solver_output = root(hybrid_H_etab_Qs_solver,
                       v0,
                       args = (self.soil__depth, 
                               self.bedrock__elevation, 
@@ -520,16 +527,69 @@ class HybridAlluvium(Component):
                               self.v_s, 
                               dt,
                               self.link_lengths,
-                              self.n_sp))
-           
-            num_nodes = int(v.size/3)
+                              self.n_sp,
+                              flooded, 
+                              H_boundary_condition_inds,
+                              eta_boundary_condition_inds, 
+                              qs_boundary_condition_inds,
+                              H_bc,
+                              eta_bbc,
+                              qs_bc))
+                      
+            if self.solver_output['success'] == False:
+                raise ValueError('Hybrid solution did not converge: '+
+                                 self.solver_output['message'])
             
+            v  = self.solver_output['x']
+            num_nodes = int((v.size + len(H_bc) + len(eta_bbc) + len(qs_bc))/3)
+    
             # extract H, eta_b, and Qs
-            self.soil__depth = v[0:num_nodes]
-            self.bedrock__elevation = v[num_nodes:num_nodes*2]
-            self.qs = v[num_nodes*2:]
+            num_H = num_nodes - len(H_bc)
+            num_eta = num_nodes - len(eta_bbc)
+            num_Q = num_nodes - len(qs_bc)
         
+            # chunk v into correct parts for H, eta_b, and Qs    
+            H = v[0:num_H]
+            eta_b = v[num_H:num_H+num_eta]
+            Qs = v[num_H+num_eta:num_H+num_eta+num_Q]
+                    
+            # put the boundary condition values in the right place. 
+            for i in range(len(H_boundary_condition_inds)):
+                ind = H_boundary_condition_inds[i]
+                H = np.insert(H, ind, H_bc[i])
+                
+            for i in range(len(eta_boundary_condition_inds)):
+                ind = eta_boundary_condition_inds[i]
+                eta_b = np.insert(eta_b, ind, eta_bbc[i])
+                
+            for i in range(len(qs_boundary_condition_inds)):
+                ind = qs_boundary_condition_inds[i]
+                Qs = np.insert(Qs, ind, qs_bc[i])
+            
+            if np.any(v[0:num_nodes])<0:
+                raise ValueError('negative soil depth')
+                
+            # put back H, eta_b, and Qs
+            self.soil__depth = H
+            self.bedrock__elevation = eta_b
+            self.qs = Qs
+            
         else:
+            
+            self.qs_in[:] = 0# np.zeros(self.grid.number_of_nodes)       
+            
+            #iterate top to bottom through the stack, calculate qs
+            # cythonized version of calculating qs_in
+            calculate_qs_in(np.flipud(self.stack),
+                            self.flow_receivers,
+                            self.grid.node_spacing,
+                            self.q,
+                            self.qs,
+                            self.qs_in,
+                            self.Es,
+                            self.Er,
+                            self.v_s,
+                            self.F_f)
             
             deposition_pertime = np.zeros(self.grid.number_of_nodes)
             deposition_pertime[self.q > 0] = (self.qs[self.q > 0] * \
@@ -537,9 +597,6 @@ class HybridAlluvium(Component):
     
             #now, the analytical solution to soil thickness in time:
             #need to distinguish D=kqS from all other cases to save from blowup!
-            
-            flooded = np.full(self._grid.number_of_nodes, False, dtype=bool)
-            flooded[flooded_nodes] = True        
             
             #distinguish cases:
             blowup = deposition_pertime == self.K_sed * self.lil_q * self.slope
@@ -599,30 +656,86 @@ class HybridAlluvium(Component):
             self.soil__depth 
         
         
-def hybrid_H_etab_Qs_solver(v, Ht, eta_bt, delta, D, flow_recievers, q, Q, K_sed, K_br, omega_sed, omega_br, H_star, F_f, phi, v_s, dt, dx, n):
+def hybrid_H_etab_Qs_solver(v, 
+                            Ht, 
+                            eta_bt, 
+                            delta, 
+                            D, 
+                            flow_recievers, 
+                            q, 
+                            Q, 
+                            K_sed, 
+                            K_br, 
+                            omega_sed, 
+                            omega_br, 
+                            H_star, 
+                            F_f, 
+                            phi, 
+                            v_s, 
+                            dt, 
+                            dx, 
+                            n, 
+                            flooded,
+                            H_boundary_condition_inds,
+                            eta_boundary_condition_inds, 
+                            qs_boundary_condition_inds,
+                            H_bc,
+                            eta_bbc,
+                            qs_bc):
+    
     """Calculation of residuals for H, eta_b, and Qs for global solution.
     
     More text here!
     """
     # extract the number of nodes. 
-    num_nodes = int(v.size/3)
+    
+    num_nodes = int((v.size + len(H_bc) + len(eta_bbc) + len(qs_bc))/3)
     
     node_id = np.arange(num_nodes)
     
     # extract H, eta_b, and Qs
-    H = v[0:num_nodes]
-    eta_b = v[num_nodes:num_nodes*2]
-    Qs = v[num_nodes*2:]
+    num_H = num_nodes - len(H_bc)
+    num_eta = num_nodes - len(eta_bbc)
+    num_Q = num_nodes - len(qs_bc)
+
+    # chunk v into correct parts for H, eta_b, and Qs    
+    H = v[0:num_H]
+    eta_b = v[num_H:num_H+num_eta]
+    Qs = v[num_H+num_eta:num_H+num_eta+num_Q]
+    
+    # put the boundary condition values in the right place. 
+    for i in range(len(H_boundary_condition_inds)):
+        ind = H_boundary_condition_inds[i]
+        H = np.insert(H, ind, H_bc[i])
+        
+    for i in range(len(eta_boundary_condition_inds)):
+        ind = eta_boundary_condition_inds[i]
+        eta_b = np.insert(eta_b, ind, eta_bbc[i])
+        
+    for i in range(len(qs_boundary_condition_inds)):
+        ind = qs_boundary_condition_inds[i]
+        Qs = np.insert(Qs, ind, qs_bc[i])
     
     # calculate slope and topographic elevation for ease
     eta = H + eta_b
+    
     S = (eta - eta[flow_recievers]) / dx[node_id]
+    
+    if np.any(np.isnan(S)):
+        print('NAN slope')
+        print(S)
+        print(H)
+        print(eta_b)
+    
+    S[S<0.0] = 0.0 # make slopes of less than zero, effectively flat. 
+    S[flooded] = 0.0 # make slopes when node flooded zero, so no erosion 
+    # occurs, but depostion can continue. 
+    
     dQsdx = (Qs - Qs[flow_recievers]) / dx[node_id]
     
     # calculate E_r and E_s
     E_r = (K_br * q * np.power(S, n))
     E_s = (K_sed * q * np.power(S, n))
-    
     
     # Calculate E_r and E_s terms including the thresholds, omega_br and 
     # omega_sed. If thresholds are zero, fix. 
@@ -650,18 +763,26 @@ def hybrid_H_etab_Qs_solver(v, Ht, eta_bt, delta, D, flow_recievers, q, Q, K_sed
             Es_term = (E_s-omega_sed*(1.0-np.exp(-E_s/omega_sed)))
             Es_term[omega_sed==0] = E_s
     
+    # behaviour when Q=0 and/or flooded nodes, slope . 
+
     # calculate settling, make sure this is OK (and zero) when Q is zero. 
     settling_term = np.zeros(H.shape)
     settling_term[Q>0] = (v_s * Qs[Q>0])/Q[Q>0]
     
     # residual function for eta_b
-    f_eta_b = ((eta_b - eta_bt)/dt) + Er_term * (np.exp(-H/H_star)) 
+    f_eta_b = ((eta_b - eta_bt)/dt) - Er_term * (np.exp(-H/H_star)) 
     
     # resiual function for H
-    f_H = ((H - Ht)/dt) - (settling_term * (1.0)/(1.0-phi)) + Es_term*(1.0-np.exp(-H/H_star)) 
+    f_H = ((H - Ht)/dt) + (settling_term * (1.0)/(1.0-phi)) - Es_term*(1.0-np.exp(-H/H_star)) 
     
     # residual function for Q
-    f_Qs =  dQsdx - ((Es_term * (1.0 - np.exp(-H/H_star)))  + (1.0 - F_f) * Er_term * (np.exp(-H / H_star))) + settling_term
+    f_Qs =  dQsdx + ((Es_term * (1.0 - np.exp(-H/H_star))) + (1.0 - F_f) * Er_term * (np.exp(-H / H_star))) - settling_term
+    
+    
+    # delete the correct portions of f_H, f_eta_b, and f_Qs related to the bcs.
+    f_H = np.delete(f_H, H_boundary_condition_inds)
+    f_eta_b = np.delete(f_eta_b, eta_boundary_condition_inds)
+    f_Qs = np.delete(f_Qs,qs_boundary_condition_inds)
     
     f = np.concatenate((f_H, f_eta_b, f_Qs), axis=0)
     
