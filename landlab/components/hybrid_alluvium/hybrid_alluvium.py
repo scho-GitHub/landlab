@@ -226,18 +226,13 @@ class HybridAlluvium(Component):
         except KeyError:
             self.qs = grid.add_zeros(
                 'sediment__flux', at='node', dtype=float)
+        
         try:
-            self.big_Q = grid.at_node['surface_water__discharge']
+            self.q = grid.at_node['surface_water__discharge']
         except KeyError:
-            self.big_Q = grid.add_zeros(
-                'surface_water__discharge', at='node', dtype=float)
-            
-        try:
-            self.little_q = grid.at_node['surface_water__discharge__per_width']
-        except KeyError:
-            self.little_q = grid.add_zeros(
-                'surface_water__discharge__per_width', at='node', dtype=float)   
-                
+            self.q = grid.add_zeros(
+                'surface_water__discharge', at='node', dtype=float)       
+        
         self._grid = grid #store grid
         
         #store other constants
@@ -324,8 +319,8 @@ class HybridAlluvium(Component):
         self.qs_in = np.zeros(self.grid.number_of_nodes)
         calculate_qs_in(np.flipud(self.stack),
                                   self.flow_receivers,
-                                  self.link_lengths,
-                                  self.little_q,
+                                  self.grid.node_spacing,
+                                  self.q,
                                   self.qs,
                                   self.qs_in,
                                   self.Es,
@@ -458,7 +453,7 @@ class HybridAlluvium(Component):
         self.br_erosion_term = self.K_br * self.lil_q * \
             np.power(self.slope, self.n_sp)
     
-    def run_one_step(self, dt=1.0, flooded_nodes=None, global_solve=True, **kwds):
+    def run_one_step(self, dt=1.0, flooded_nodes=None, global_solve=False, **kwds):
         """Calculate change in rock and alluvium thickness for
            a time period 'dt'.
         
@@ -513,8 +508,8 @@ class HybridAlluvium(Component):
                               self.delta, 
                               self.D, 
                               self.flow_receivers, 
-                              self.little_q, 
-                              self.big_Q, 
+                              self.lil_q, 
+                              self.q, 
                               self.K_sed, 
                               self.K_br, 
                               self.sp_crit_sed, 
