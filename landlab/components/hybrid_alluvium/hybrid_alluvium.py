@@ -490,7 +490,7 @@ class HybridAlluvium(Component):
             #need to distinguish D=kqS from all other cases to save from blowup!        
             # use present values as the initial guess. 
             
-            # need to permit some nodes to be the boundary condition. 
+            # need to permit some nodes to be the boundary condition.            
             s_d = self.soil__depth.copy()
             b_e = self.bedrock__elevation.copy()
             qs = self.qs.copy()
@@ -509,39 +509,39 @@ class HybridAlluvium(Component):
     
             # solve using fsolve
             self.solver_output = root(hybrid_H_etab_Qs_solver,
-                      v0,
-                      args = (self.soil__depth, 
-                              self.bedrock__elevation, 
-                              self.delta, 
-                              self.D, 
-                              self.flow_receivers, 
-                              self.lil_q, 
-                              self.q, 
-                              self.K_sed, 
-                              self.K_br, 
-                              self.sp_crit_sed, 
-                              self.sp_crit_br, 
-                              self.H_star, 
-                              self.F_f, 
-                              self.phi, 
-                              self.v_s, 
-                              dt,
-                              self.link_lengths,
-                              self.n_sp,
-                              flooded, 
-                              H_boundary_condition_inds,
-                              eta_boundary_condition_inds, 
-                              qs_boundary_condition_inds,
-                              H_bc,
-                              eta_bbc,
-                              qs_bc))
-                      
+                                      v0,
+                                      args = (self.soil__depth, 
+                                              self.bedrock__elevation, 
+                                              self.delta, 
+                                              self.D, 
+                                              self.flow_receivers, 
+                                              self.lil_q, 
+                                              self.q, 
+                                              self.K_sed, 
+                                              self.K_br, 
+                                              self.sp_crit_sed, 
+                                              self.sp_crit_br, 
+                                              self.H_star, 
+                                              self.F_f, 
+                                              self.phi, 
+                                              self.v_s, 
+                                              dt,
+                                              self.link_lengths,
+                                              self.n_sp,
+                                              flooded, 
+                                              H_boundary_condition_inds,
+                                              eta_boundary_condition_inds, 
+                                              qs_boundary_condition_inds,
+                                              H_bc,
+                                              eta_bbc,
+                                              qs_bc))
+                                          
             if self.solver_output['success'] == False:
                 raise ValueError('Hybrid solution did not converge: '+
                                  self.solver_output['message'])
             
-            v  = self.solver_output['x']
-            num_nodes = int((v.size + len(H_bc) + len(eta_bbc) + len(qs_bc))/3)
+            self.v  = self.solver_output['x'].copy()
+            num_nodes = int((self.v.size + len(H_bc) + len(eta_bbc) + len(qs_bc))/3)
     
             # extract H, eta_b, and Qs
             num_H = num_nodes - len(H_bc)
@@ -549,9 +549,9 @@ class HybridAlluvium(Component):
             num_Q = num_nodes - len(qs_bc)
         
             # chunk v into correct parts for H, eta_b, and Qs    
-            H = v[0:num_H]
-            eta_b = v[num_H:num_H+num_eta]
-            Qs = v[num_H+num_eta:num_H+num_eta+num_Q]
+            H = self.v[0:num_H].copy()
+            eta_b = self.v[num_H:num_H+num_eta].copy()
+            Qs = self.v[num_H+num_eta:num_H+num_eta+num_Q].copy()
                     
             # put the boundary condition values in the right place. 
             for i in range(len(H_boundary_condition_inds)):
@@ -566,13 +566,15 @@ class HybridAlluvium(Component):
                 ind = qs_boundary_condition_inds[i]
                 Qs = np.insert(Qs, ind, qs_bc[i])
             
-            if np.any(v[0:num_nodes])<0:
+            if np.any(self.v[0:num_H])<0:
                 raise ValueError('negative soil depth')
                 
             # put back H, eta_b, and Qs
-            self.soil__depth = H
-            self.bedrock__elevation = eta_b
-            self.qs = Qs
+            self.soil__depth[:] = H.copy()
+            self.bedrock__elevation[:] = eta_b.copy()
+            self.qs[:] = Qs.copy()
+            
+            print(self.bedrock__elevation[8])
             
         else:
             
@@ -652,8 +654,8 @@ class HybridAlluvium(Component):
                 (np.exp(-self.soil__depth[self.q > 0] / self.H_star)))
                 
         #finally, determine topography by summing bedrock and soil
-        self.topographic__elevation[:] = self.bedrock__elevation + \
-            self.soil__depth 
+        # do this for either solver option. 
+        self.topographic__elevation[:] = self.bedrock__elevation + self.soil__depth 
         
         
 def hybrid_H_etab_Qs_solver(v, 
@@ -770,13 +772,13 @@ def hybrid_H_etab_Qs_solver(v,
     settling_term[Q>0] = (v_s * Qs[Q>0])/Q[Q>0]
     
     # residual function for eta_b
-    f_eta_b = ((eta_b - eta_bt)/dt) - Er_term * (np.exp(-H/H_star)) 
+    f_eta_b = -((eta_b - eta_bt)/dt) - Er_term * (np.exp(-H/H_star)) 
     
     # resiual function for H
-    f_H = ((H - Ht)/dt) + (settling_term * (1.0)/(1.0-phi)) - Es_term*(1.0-np.exp(-H/H_star)) 
+    f_H = -((H - Ht)/dt) + (settling_term * (1.0)/(1.0-phi)) - Es_term*(1.0-np.exp(-H/H_star)) 
     
     # residual function for Q
-    f_Qs =  dQsdx + ((Es_term * (1.0 - np.exp(-H/H_star))) + (1.0 - F_f) * Er_term * (np.exp(-H / H_star))) - settling_term
+    f_Qs =  -dQsdx + ((Es_term * (1.0 - np.exp(-H/H_star))) + (1.0 - F_f) * Er_term * (np.exp(-H / H_star))) - settling_term
     
     
     # delete the correct portions of f_H, f_eta_b, and f_Qs related to the bcs.
