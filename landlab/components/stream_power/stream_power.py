@@ -13,7 +13,7 @@ from .cfuncs import (brent_method_erode_fixed_threshold,
                      brent_method_erode_variable_threshold)
 
 from landlab import BAD_INDEX_VALUE as UNDEFINED_INDEX
-
+from landlab.core.messages import warning_message, assert_or_print
 
 class StreamPowerEroder(Component):
     """Erode where channels are.
@@ -579,29 +579,48 @@ class StreamPowerEroder(Component):
 
         return grid, z, self.stream_power_erosion
 
-    def run_one_step(self, dt, flooded_nodes=None, **kwds):
+    def run_one_step(self, dt, flooded_nodes=None, erode_opts=None):
         """
-        A simple, explicit implementation of a stream power algorithm.
-
-        This component now looks exclusively for the field
-        'topographic__steepest_slope' at each node to determine the local
-        slope (previoiusly it was possible to map values from links explicitly
-        within the component, but this functionality is now deprecated).
-
-        If you are routing across flooded depressions in your flow routing
-        scheme, be sure to set *flooded_nodes* with a boolean array or array
-        of IDs to ensure erosion cannot occur in the lake. Erosion
-        is always zero if the gradient is adverse, but can still procede as
-        usual on the entry into the depression unless *flooded_nodes* is set.
-
+        A standard landlab wrapper for StreamPowerEroder functions. 
+        
+        These functions include:
+            *erode*, A simple, explicit implementation of a stream power 
+            algorithm. Refer to the documentation of the *erode* function for
+            the list of possible keyword arguments. 
+            
         Parameters
         ----------
         dt : float
             Time-step size
-        flooded_nodes : ndarray of int (optional)
+        flooded_nodes : ndarray of int (optional, depreciated)
             IDs of nodes that are flooded and should have no erosion. If not
             provided but flow has still been routed across depressions, erosion
             may still occur beneath the apparent water level (though will
             always still be positive).
+            
+            Passing this parameter explicitly is depreciated. It should be 
+            passed as part of erode_opts instead. 
+            
+        erode_opts : dict of key-value pairs, optional
+            Keyword arguments to pass to the erode function.
         """
-        self.erode(grid=self._grid, dt=dt, flooded_nodes=flooded_nodes)
+        erode_opts = erode_opts or {}
+        
+        # Handle flooded nodes, which were originally passed as a keyword 
+        # argument
+        
+        w_message = ('flooded_nodes provided both as keyword argument '
+                     'and in the erode_ops dictionary. Please provide it '
+                     'only in one place.')
+       
+        message = ('flooded_nodes provided as keyword argument. This '
+                   'is depreciated. Please pass it as part of the '
+                   'erode_ops dictionary.')
+                                              
+        assert_or_print(flooded_nodes is None, msg=message, onerror='warn')
+        if flooded_nodes is not None and "flooded_nodes" in erode_opts:
+            raise ValueError(warning_message(w_message))
+                
+        # run the erode function       
+        self.erode(grid=self._grid, dt=dt, **erode_opts)
+
