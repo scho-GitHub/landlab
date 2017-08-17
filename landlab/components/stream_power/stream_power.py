@@ -44,10 +44,25 @@ class StreamPowerEroder(Component):
     a timestep while using this component. The user is cautioned to check their
     implementation is behaving stably before fully trusting it.
 
-    NB: If you want spatially or temporally variable runoff, pass the
-    runoff values at each pixel to the flow router using the input argument
-    *use_Q*.
-
+    NB: If you want spatially variable runoff or channel width, pass the
+    runoff or channel width values at each pixel when you initialize 
+    StreamPowerEroder using the input arguments *use_Q* and/or *use_W*. The
+    values can be passed either as an array of length number of nodes or an
+    at-node field name. 
+    
+    If you want spatially variabiable K, pass either array of length number of 
+    nodes or an at-node field name upon initialization. 
+    
+    If you want spatially and temporally variable runoff or channel width, set 
+    the input arguments *use_Q* and/or *use_W* to True when the 
+    StreamPowerEroder is initialied. Then when running run_one_step, pass 
+    either an array of length number of nodes or an at-node field name to the 
+    argument W_if_used or Q_if_used.
+    
+    If you want spatially and temporally variable K, then pass the value 
+    K_sp="array" to StreamPowerEroder at initialization and then pass the 
+    
+    
     Construction::
 
         StreamPowerEroder(grid, K_sp=None, threshold_sp=0., sp_type='set_mn',
@@ -58,8 +73,10 @@ class StreamPowerEroder(Component):
     ----------
     grid : ModelGrid
         A grid.
-    K_sp : float, array, or field name
+    K_sp : float, array, field name, or "array"
         K in the stream power equation (units vary with other parameters).
+        For spatially variable K, pass the string 'array' and then use the 
+        argument K_if_used for run_one_step.
     threshold_sp : positive float, optional
         The threshold stream power, below which no erosion occurs. This
         threshold is assumed to be in "stream power" units, i.e., if
@@ -90,7 +107,7 @@ class StreamPowerEroder(Component):
     c_sp : float, optional
         The power on area to get discharge; the "basin hydology" term. Only
         used if sp_type is not 'set_mn'.
-    use_W : None, array, or field name, optional
+    use_W : None, array, field name, or boolean, optional
         If not None, component will look for node-centered data describing
         channel width in grid.at_node[use_W] or if an array, will take the
         array as the channel widths. It will use the widths to implement
@@ -98,7 +115,7 @@ class StreamPowerEroder(Component):
         follows the equation given above. If sp_type in ('Unit',
         'Shear_stress'), the width value will be implemented directly. W has no
         effect if sp_type is 'Total'.
-    use_Q : None, array, or field name, optional
+    use_Q : None, array, field name, or boolean, optional
         If not None, the equation becomes E=K*Q**m*S**n. Effectively sets c=1
         in Wh&T's 1999 derivation, if you are setting m and n through a, b,
         and c.
@@ -219,7 +236,7 @@ class StreamPowerEroder(Component):
     @use_file_name_or_kwds
     def __init__(self, grid, K_sp=None, threshold_sp=0., sp_type='set_mn',
                  m_sp=0.5, n_sp=1., a_sp=None, b_sp=None, c_sp=None,
-                 use_W=None, use_Q=None, **kwds):
+                 use_W=None, use_Q=None, use_K=None, **kwds):
         """Initialize the StreamPowerEroder"""
         if type(use_Q) is str and use_Q == 'water__discharge':
             use_Q = 'surface_water__discharge'
@@ -419,7 +436,15 @@ class StreamPowerEroder(Component):
             NB: If you want spatially or temporally variable runoff, pass the
             runoff values at each pixel to the flow router, then pass
             discharges at each node using *Q_if_used* to this component.
-
+            
+            Note that runnoff is defined with units of L/T and is internally
+            multiplied by the area of grid cells. 
+        
+        K_if_used : str or ndarray, optional
+            Time and space variable erodability. 
+            Must be provided if you set *K_sp* to 'array' in initialization. 
+            This can either be a field name or a number of node array. 
+            
         Returns
         -------
         tuple
@@ -442,15 +467,15 @@ class StreamPowerEroder(Component):
 
         if W_if_used is not None:
             assert self.use_W, ("Widths were provided, but you didn't set " +
-                                "the use_W flag in your input file! " +
+                                "the use_W flag to True in your input file! " +
                                 "Aborting...")
             assert self._W is None, ("Do not pass W to the run method " +
                                      "if you also set them at initialization!")
 
         if Q_if_used is not None:
             assert self.use_Q, ("Discharges were provided, but you didn't " +
-                                "set the use_Q flag in your input file! " +
-                                "Aborting...")
+                                "set the use_Q flag to True in your input " +
+                                "file! Aborting...")
             assert self._Q is None, ("Do not pass Q to the run method " +
                                      "if you also set them at initialization!")
 
@@ -608,7 +633,6 @@ class StreamPowerEroder(Component):
         
         # Handle flooded nodes, which were originally passed as a keyword 
         # argument
-        
         w_message = ('flooded_nodes provided both as keyword argument '
                      'and in the erode_ops dictionary. Please provide it '
                      'only in one place.')
