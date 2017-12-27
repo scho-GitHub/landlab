@@ -33,14 +33,14 @@ from .erosion_deposition import ErosionDeposition
 from .space import Space
 from .landslides import LandslideProbability
 from .transport_length_diffusion import TransportLengthHillslopeDiffuser
-
+from .depression_filler import DepressionFiller
 
 COMPONENTS = [ChiFinder, LinearDiffuser,
               Flexure, FlowRouter, DepressionFinderAndRouter,
               PerronNLDiffuse, OverlandFlowBates, OverlandFlow,
               KinwaveImplicitOverlandFlow,
               PotentialEvapotranspiration, PotentialityFlowRouter,
-              Radiation, SinkFiller, 
+              Radiation, SinkFiller, DepressionFiller,
               StreamPowerEroder, StreamPowerSmoothThresholdEroder,
               FastscapeEroder, SedDepEroder,
               PrecipitationDistribution,
