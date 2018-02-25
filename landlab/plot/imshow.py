@@ -116,6 +116,11 @@ def imshow_grid_at_node(grid, values, **kwds):
         filename (with file extension). The function will then call
         plt.savefig([string]) itself. If True, the function will call
         plt.show() itself once plotting is complete.
+
+    Returns
+    -------
+    AxesImage
+        The image object returned by the matplotlib plotting functions.
     """
     if isinstance(values, str):
         values_at_node = grid.at_node[values]
@@ -133,13 +138,15 @@ def imshow_grid_at_node(grid, values, **kwds):
     except AttributeError:
         shape = (-1, )
 
-    _imshow_grid_values(grid, values_at_node.reshape(shape), **kwds)
+    axes_image = _imshow_grid_values(grid, values_at_node.reshape(shape), **kwds)
 
     if isinstance(values, str):
         plt.title(values)
-        
-    plt.gcf().canvas.mpl_connect('button_press_event', 
-       lambda event: query_grid_on_button_press(event, grid))
+
+    plt.gcf().canvas.mpl_connect('button_press_event',
+           lambda event: query_grid_on_button_press(event, grid))
+
+    return axes_image
 
 
 @deprecated(use='imshow_grid_at_node', version='0.5')
@@ -223,6 +230,13 @@ def imshow_grid_at_cell(grid, values, **kwds):
     ------
     ValueError
         If input grid is not uniform rectilinear.
+
+    Returns
+    -------
+    AxesImage
+        The image object returned by the matplotlib plotting functions. This is
+        only returned when the grid input is of type RasterModelGrid. Other
+        grid types return None.
     """
     if isinstance(values, str):
         try:
@@ -243,14 +257,14 @@ def imshow_grid_at_cell(grid, values, **kwds):
     values_at_cell.mask = True
     values_at_cell.mask[grid.core_cells] = False
 
-    myimage = _imshow_grid_values(grid,
+    axes_image = _imshow_grid_values(grid,
                                   values_at_cell.reshape(grid.cell_grid_shape),
                                   **kwds)
 
     if isinstance(values, str):
         plt.title(values)
 
-    return myimage
+    return axes_image
 
 
 @deprecated(use='imshow_grid_at_cell', version='0.5')
@@ -299,13 +313,12 @@ def _imshow_grid_values(grid, values, plot_name=None, var_name=None,
 
         if np.isclose(grid.dx, grid.dy):
             if values.size == grid.number_of_nodes:
-                myimage = plt.imshow(
-                    values.reshape(grid.shape), origin='lower',
-                    extent=(x[0], x[-1], y[0], y[-1]), **kwds)
+                plt.imshow(values.reshape(grid.shape), origin='lower',
+                        extent=(x[0], x[-1], y[0], y[-1]), **kwds)
             else:  # this is a cell grid, and has been reshaped already...
-                myimage = plt.imshow(values, origin='lower',
-                                     extent=(x[0], x[-1], y[0], y[-1]), **kwds)
-        myimage = plt.pcolormesh(x, y, values, **kwds)
+                plt.imshow(values, origin='lower',
+                           extent=(x[0], x[-1], y[0], y[-1]), **kwds)
+        axes_image = plt.pcolormesh(x, y, values, **kwds)
 
         plt.gca().set_aspect(1.)
         plt.autoscale(tight=True)
@@ -349,10 +362,10 @@ def _imshow_grid_values(grid, values, plot_name=None, var_name=None,
         cNorm = colors.Normalize(vmin, vmax)
         scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
         colorVal = scalarMap.to_rgba(values)
-
+        axes_image = []
         if show_elements:
-            myimage = voronoi_plot_2d(grid.vor, show_vertices=False,
-                                      show_points=False)
+            axes_image = voronoi_plot_2d(grid.vor, show_vertices=False, show_points=False)
+
         # show_points to be supported in scipy0.18, but harmless for now
         mycolors = (i for i in colorVal)
         for order in grid.vor.point_region:
@@ -361,6 +374,8 @@ def _imshow_grid_values(grid, values, plot_name=None, var_name=None,
             if -1 not in region:
                 polygon = [grid.vor.vertices[i] for i in region]
                 plt.fill(*zip(*polygon), color=colortouse)
+#                axes_image.extend(plt.fill(*zip(*polygon), color=colortouse))
+        axes_image = axes_image[0].get_children()
 
         plt.gca().set_aspect(1.)
         # plt.autoscale(tight=True)
@@ -414,6 +429,8 @@ def _imshow_grid_values(grid, values, plot_name=None, var_name=None,
             plt.clf()
         elif output:
             plt.show()
+
+    return axes_image
 
 
 def imshow_grid(grid, values, **kwds):
@@ -505,6 +522,11 @@ def imshow_grid(grid, values, **kwds):
         filename (with file extension). The function will then call
         plt.savefig([string]) itself. If True, the function will call
         plt.show() itself once plotting is complete.
+
+    Returns
+    -------
+    AxesImage
+        The image object returned by the matplotlib plotting functions.
     """
     show = kwds.pop('show', False)
     values_at = kwds.pop('values_at', 'node')
@@ -517,12 +539,14 @@ def imshow_grid(grid, values, **kwds):
         values = grid.field_values(values_at, values)
 
     if values_at == 'node':
-        imshow_grid_at_node(grid, values, **kwds)
+        axes_image = imshow_grid_at_node(grid, values, **kwds)
     elif values_at == 'cell':
-        imshow_grid_at_cell(grid, values, **kwds)
+        axes_image = imshow_grid_at_cell(grid, values, **kwds)
     else:
         raise TypeError('value location %s not understood' % values_at)
 
     # retained for backwards compatibility:
     if show:
         plt.show()
+
+    return axes_image
