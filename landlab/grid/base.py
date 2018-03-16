@@ -266,10 +266,6 @@ class ModelGrid(SkeletonGrid):
     def __init__(self, **kwds):
         super(ModelGrid, self).__init__()
 
-        self.axis_name = kwds.get('axis_name', _default_axis_names(self.ndim))
-        self.axis_units = kwds.get(
-            'axis_units', _default_axis_units(self.ndim))
-
         self._link_length = None
         self._all_node_distances_map = None
         self._all_node_azimuths_map = None
@@ -284,7 +280,49 @@ class ModelGrid(SkeletonGrid):
             if loc not in ('node', 'link'):
                 size = self.number_of_elements(loc)
                 ModelDataFields.new_field_location(self, loc, size=size)
+    
+    def number_of_elements(self, name):
+        """Number of instances of an element.
 
+        Get the number of instances of a grid element in a grid.
+
+        Parameters
+        ----------
+        name : {'node', 'cell', 'link', 'face', 'core_node', 'core_cell',
+                'active_link', 'active_face'}
+            Name of the grid element.
+
+        Returns
+        -------
+        int
+            Number of elements in the grid.
+
+        Examples
+        --------
+        >>> from landlab import RasterModelGrid, CLOSED_BOUNDARY
+        >>> mg = RasterModelGrid((4, 5), 1.)
+        >>> mg.number_of_elements('node')
+        20
+        >>> mg.number_of_elements('core_cell')
+        6
+        >>> mg.number_of_elements('link')
+        31
+        >>> mg.number_of_elements('active_link')
+        17
+        >>> mg.status_at_node[8] = CLOSED_BOUNDARY
+        >>> mg.number_of_elements('link')
+        31
+        >>> mg.number_of_elements('active_link')
+        13
+
+        LLCATS: GINF
+        """
+        try:
+            return getattr(self, _ARRAY_LENGTH_ATTRIBUTES[name])
+        except KeyError:
+            raise TypeError(
+                '{name}: element name not understood'.format(name=name))
+            
     @property
     def node_at_cell(self):
         """Node ID associated with grid cells.
