@@ -369,10 +369,10 @@ class GraphFields(object):
         Create a collection of fields and add two groups, *node* and *cell*,
         to it.
 
-        >>> from landlab.field import GraphFields
-        >>> fields = GraphFields()
-        >>> fields.new_field_location('node', 12)
-        >>> fields.new_field_location('cell', 2)
+            >>> from landlab.field import GraphFields
+            >>> fields = GraphFields()
+            >>> fields.new_field_location('node', 12)
+            >>> fields.new_field_location('cell', 2)
 
         The group names in the collection are retrieved with the *groups*
         attribute as a `set`.
@@ -398,7 +398,7 @@ class GraphFields(object):
         """
         dataset_name = 'at_' + loc
         if loc not in self._groups:
-            setattr(self, dataset_name, FieldDataset(loc, size, ds=self.ds))
+            setattr(self, dataset_name, FieldDataset(loc, size))
             self._groups.add(loc)
         else:
             raise ValueError('{loc} location already exists'.format(loc=loc))
@@ -667,7 +667,7 @@ class GraphFields(object):
             group = kwds.pop('at', kwds.pop('centering', 'node'))
         else:
             group = args[0]
-        
+
         if group == 'grid':
             raise ValueError("ones is not supported for at='grid', if you "
                              "want to create a field at the grid, use\n"
@@ -732,8 +732,8 @@ class GraphFields(object):
         Return a new array of the data field size, filled with zeros. Keyword
         arguments are the same as that for the equivalent numpy function.
 
-        This method is not valid for the group *grid*.        
-        
+        This method is not valid for the group *grid*.
+
         See Also
         --------
         numpy.zeros : See for a description of optional keywords.
@@ -769,9 +769,9 @@ class GraphFields(object):
         Add an array of data values to a collection of fields and associate it
         with the key, *name*. Use the *copy* keyword to, optionally, add a
         copy of the provided array.
-        
+
         In the case of adding to the collection *grid*, the added field is a
-        numpy scalar rather than a numpy array. 
+        numpy scalar rather than a numpy array.
 
         Parameters
         ----------
@@ -903,7 +903,7 @@ class GraphFields(object):
         entries, and add it to the field as *name*. The *units* keyword gives
         the units of the new fields as a string. Remaining keyword arguments
         are the same as that for the equivalent numpy function.
-        
+
         This method is not valid for the group *grid*.
 
         Parameters
@@ -954,7 +954,7 @@ class GraphFields(object):
         add it to the field as *name*. The *units* keyword gives the units of
         the new fields as a string. Remaining keyword arguments are the same
         as that for the equivalent numpy function.
-        
+
         This method is not valid for the group *grid*.
 
         Parameters
