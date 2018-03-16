@@ -4,6 +4,7 @@ from .hex import HexModelGrid
 from .radial import RadialModelGrid
 from .raster import RasterModelGrid
 from .voronoi import VoronoiDelaunayGrid
+from .network import NetworkModelGrid
 
 from .base import (BAD_INDEX_VALUE, CORE_NODE, FIXED_VALUE_BOUNDARY,
                    FIXED_GRADIENT_BOUNDARY, LOOPED_BOUNDARY,
@@ -11,7 +12,7 @@ from .base import (BAD_INDEX_VALUE, CORE_NODE, FIXED_VALUE_BOUNDARY,
 from .create import create_and_initialize_grid
 
 __all__ = ['SkeletonGrid', 'ModelGrid', 'HexModelGrid', 'RadialModelGrid',
-           'RasterModelGrid', 'VoronoiDelaunayGrid',
+           'RasterModelGrid', 'VoronoiDelaunayGrid', 'NetworkModelGrid',
            'BAD_INDEX_VALUE', 'CORE_NODE',
            'FIXED_VALUE_BOUNDARY', 'FIXED_GRADIENT_BOUNDARY',
            'LOOPED_BOUNDARY', 'CLOSED_BOUNDARY',
