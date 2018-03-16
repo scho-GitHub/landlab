@@ -1,7 +1,9 @@
 #! /usr/env/python
 """
-Python implementation of ModelGrid, a base class used to create and manage
-grids for 2D numerical models.
+Python implementation of ModelGraph, a base class used to create and manage
+grids for 2D numerical models. This base class only uses nodes and links,
+ModelGrid inherits from it and adds the remaining functionality on a fully 2D
+grid.
 
 Do NOT add new documentation here. Grid documentation is now built in a semi-
 automated fashion. To modify the text seen on the web, edit the files
@@ -16,7 +18,6 @@ from time import time
 import six
 from six.moves import range
 
-from landlab.grid.skeleton import SkeletonGrid
 from landlab.testing.decorators import track_this_method
 from landlab.utils import count_repeated_values
 from landlab.core.utils import argsort_points_by_x_then_y
@@ -44,19 +45,13 @@ BAD_INDEX_VALUE = -1
 # of that element in the grid.
 _ARRAY_LENGTH_ATTRIBUTES = {
     'node': 'number_of_nodes',
-    'patch': 'number_of_patches',
     'link': 'number_of_links',
-    'corner': 'number_of_corners',
-    'face': 'number_of_faces',
-    'cell': 'number_of_cells',
     'active_link': 'number_of_active_links',
-    'active_face': 'number_of_active_faces',
     'core_node': 'number_of_core_nodes',
-    'core_cell': 'number_of_core_cells',
 }
 
 # Fields whose sizes can not change.
-_SIZED_FIELDS = {'node', 'link', 'patch', 'corner', 'face', 'cell', }
+_SIZED_FIELDS = {'node', 'link'}
 
 
 def _sort_points_into_quadrants(x, y, nodes):
@@ -267,7 +262,7 @@ def find_true_vector_from_link_vector_pair(L1, L2, b1x, b1y, b2x, b2y):
     return ax, ay
 
 
-class ModelGrid(SkeletonGrid):
+class ModelGrid(ModelDataFieldsMixIn, EventLayersMixIn):
     """Base class for 2D structured or unstructured grids for numerical models.
 
     The idea is to have at least two inherited
