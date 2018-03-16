@@ -90,7 +90,7 @@ def map_link_head_node_to_link(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_link_head_node_to_link
+    >>> from landlab.grid.node_and_link_mappers import map_link_head_node_to_link
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -152,7 +152,7 @@ def map_link_tail_node_to_link(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_link_tail_node_to_link
+    >>> from landlab.grid.node_and_link_mappers import map_link_tail_node_to_link
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -213,7 +213,7 @@ def map_min_of_link_nodes_to_link(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_min_of_link_nodes_to_link
+    >>> from landlab.grid.node_and_link_mappers import map_min_of_link_nodes_to_link
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -276,7 +276,7 @@ def map_max_of_link_nodes_to_link(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_max_of_link_nodes_to_link
+    >>> from landlab.grid.node_and_link_mappers import map_max_of_link_nodes_to_link
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -339,7 +339,7 @@ def map_mean_of_link_nodes_to_link(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_mean_of_link_nodes_to_link
+    >>> from landlab.grid.node_and_link_mappers import map_mean_of_link_nodes_to_link
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -408,7 +408,7 @@ def map_value_at_min_node_to_link(grid, control_name, value_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_value_at_min_node_to_link
+    >>> from landlab.grid.node_and_link_mappers import map_value_at_min_node_to_link
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -479,7 +479,7 @@ def map_value_at_max_node_to_link(grid, control_name, value_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_value_at_max_node_to_link
+    >>> from landlab.grid.node_and_link_mappers import map_value_at_max_node_to_link
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -543,7 +543,7 @@ def map_min_of_node_links_to_node(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_min_of_node_links_to_node
+    >>> from landlab.grid.node_and_link_mappers import map_min_of_node_links_to_node
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -608,7 +608,7 @@ def map_max_of_node_links_to_node(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_max_of_node_links_to_node
+    >>> from landlab.grid.node_and_link_mappers import map_max_of_node_links_to_node
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -676,7 +676,7 @@ def map_upwind_node_link_max_to_node(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_upwind_node_link_max_to_node
+    >>> from landlab.grid.node_and_link_mappers import map_upwind_node_link_max_to_node
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -747,7 +747,7 @@ def map_downwind_node_link_max_to_node(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_downwind_node_link_max_to_node
+    >>> from landlab.grid.node_and_link_mappers import map_downwind_node_link_max_to_node
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -819,7 +819,7 @@ def map_upwind_node_link_mean_to_node(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_upwind_node_link_mean_to_node
+    >>> from landlab.grid.node_and_link_mappers import map_upwind_node_link_mean_to_node
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -895,7 +895,7 @@ def map_downwind_node_link_mean_to_node(grid, var_name, out=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_downwind_node_link_mean_to_node
+    >>> from landlab.grid.node_and_link_mappers import map_downwind_node_link_mean_to_node
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -978,7 +978,7 @@ def map_value_at_upwind_node_link_max_to_node(grid, control_name,
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_value_at_upwind_node_link_max_to_node
+    >>> from landlab.grid.node_and_link_mappers import map_value_at_upwind_node_link_max_to_node
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))
@@ -1064,7 +1064,7 @@ def map_value_at_downwind_node_link_max_to_node(grid, control_name,
     Examples
     --------
     >>> import numpy as np
-    >>> from landlab.grid.mappers import map_value_at_downwind_node_link_max_to_node
+    >>> from landlab.grid.node_and_link_mappers import map_value_at_downwind_node_link_max_to_node
     >>> from landlab import RasterModelGrid
 
     >>> rmg = RasterModelGrid((3, 4))

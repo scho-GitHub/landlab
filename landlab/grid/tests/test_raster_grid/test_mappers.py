@@ -7,6 +7,7 @@ except ImportError:
 
 from landlab import RasterModelGrid
 import landlab.grid.mappers as maps
+import landlab.grid.node_and_link_mappers as nl_maps
 
 
 class TestLinkEndsToLink():
@@ -17,7 +18,7 @@ class TestLinkEndsToLink():
         node_values = rmg.at_node['values']
         node_values[:] = np.arange(rmg.number_of_nodes)
 
-        values_at_links = maps.map_max_of_link_nodes_to_link(rmg, 'values')
+        values_at_links = nl_maps.map_max_of_link_nodes_to_link(rmg, 'values')
 
         assert_array_equal(
             values_at_links,
@@ -35,7 +36,7 @@ class TestLinkEndsToLink():
         node_values = rmg.at_node['values']
         node_values[:] = np.arange(rmg.number_of_nodes)
 
-        values_at_links = maps.map_min_of_link_nodes_to_link(rmg, 'values')
+        values_at_links = nl_maps.map_min_of_link_nodes_to_link(rmg, 'values')
 
         assert_array_equal(
             values_at_links,
@@ -57,7 +58,7 @@ class TestNodeToLinkMappers():
         node_values = rmg.at_node['values']
         node_values[:] = np.arange(rmg.number_of_nodes)
 
-        link_values = maps.map_link_tail_node_to_link(rmg, 'values')
+        link_values = nl_maps.map_link_tail_node_to_link(rmg, 'values')
 
         assert_array_equal(link_values,
                            np.array([ 0,  1,  2,  3,  0,
@@ -68,7 +69,7 @@ class TestNodeToLinkMappers():
                                      13, 14, 15, 16, 17,
                                      18]))
         out = np.empty_like(link_values)
-        rtn = maps.map_link_tail_node_to_link(rmg, 'values', out=out)
+        rtn = nl_maps.map_link_tail_node_to_link(rmg, 'values', out=out)
         assert_array_equal(out, link_values)
         assert_is(rtn, out)
 
@@ -79,15 +80,15 @@ class TestNodeToLinkMappers():
         node_values = rmg.at_node['values']
         node_values[:] = np.arange(rmg.number_of_nodes)
 
-        link_values = maps.map_link_head_node_to_link(rmg, 'values')
+        link_values = nl_maps.map_link_head_node_to_link(rmg, 'values')
 
         #link_values = rmg.at_link['values']
         assert_array_equal(link_values,
                            np.array([1,  2,  3,  4,
                                      5,  6,  7,  8,  9,
-                                     6,  7,  8,  9, 
-                                     10, 11, 12, 13, 14, 
-                                     11, 12, 13, 14, 
+                                     6,  7,  8,  9,
+                                     10, 11, 12, 13, 14,
+                                     11, 12, 13, 14,
                                      15, 16, 17, 18, 19,
                                      16, 17, 18, 19]))
 
@@ -98,7 +99,7 @@ class TestNodeToLinkMappers():
         node_values = rmg.at_node['values']
         node_values[:] = np.arange(rmg.number_of_nodes)
 
-        link_values = maps.map_mean_of_link_nodes_to_link(rmg, 'values')
+        link_values = nl_maps.map_mean_of_link_nodes_to_link(rmg, 'values')
 
         assert_array_equal(link_values,
                            np.array([0.5,  1.5,  2.5,  3.5,  2.5,
