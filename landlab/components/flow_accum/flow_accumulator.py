@@ -15,7 +15,7 @@ from __future__ import print_function
 import warnings
 
 from landlab import FieldError, Component
-from landlab import RasterModelGrid, VoronoiDelaunayGrid  # for type tests
+from landlab import RasterModelGrid, VoronoiDelaunayGrid, NetworkModelGrid  # for type tests
 from landlab.utils.decorators import use_field_name_or_array
 from landlab.core.messages import warning_message
 
@@ -632,8 +632,16 @@ class FlowAccumulator(Component):
         self.surface = surface
         self.surface_values = _return_surface(grid, surface)
 
-        node_cell_area = self._grid.cell_area_at_node.copy()
-        node_cell_area[self._grid.closed_boundary_nodes] = 0.
+        if isinstance(self._grid, NetworkModelGrid):
+            try:
+                node_cell_area = self._grid.at_node['cell_area_at_node']
+            except FieldError:
+                raise FieldError('In order for the FlowAccumulator to work, the '
+                                 'grid must have an at-node field called '
+                                 'cell_area_at_node.')
+        else:
+            node_cell_area = self._grid.cell_area_at_node.copy()
+            node_cell_area[self._grid.closed_boundary_nodes] = 0.
 
         self.node_cell_area = node_cell_area
 
