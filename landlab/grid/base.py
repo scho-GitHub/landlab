@@ -277,9 +277,8 @@ class ModelGrid(SkeletonGrid):
         # self._sort_links_by_midpoint()
 
         for loc in _SIZED_FIELDS:
-            if loc not in ('node', 'link'):
-                size = self.number_of_elements(loc)
-                ModelDataFields.new_field_location(self, loc, size=size)
+            size = self.number_of_elements(loc)
+            ModelDataFields.new_field_location(self, loc, size=size)
 
     def number_of_elements(self, name):
         """Number of instances of an element.

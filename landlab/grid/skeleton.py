@@ -164,19 +164,6 @@ class SkeletonGrid(ModelDataFieldsMixIn, EventLayersMixIn):
         self._all_node_azimuths_map = None
         self.bc_set_code = 0
 
-        # Sort links according to the x and y coordinates of their midpoints.
-        # Assumes 1) node_at_link_tail and node_at_link_head have been
-        # created, and 2) so have node_x and node_y.
-        # self._sort_links_by_midpoint()
-
-        for loc in _SIZED_FIELDS:
-            size = self.number_of_elements(loc)
-            ModelDataFields.new_field_location(self, loc, size=size)
-        ModelDataFields.new_field_location(self, 'grid', size=1)
-        # for loc in _UNSIZED_FIELDS:
-        #     ModelDataFields.new_field_location(self, loc, size=None)
-        ModelDataFields.set_default_group(self, 'node')
-
     def _create_neighbor_list(self, **kwds):
         """Create list of neighbor node IDs.
 
