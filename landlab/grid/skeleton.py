@@ -53,51 +53,6 @@ _ARRAY_LENGTH_ATTRIBUTES = {
 # Fields whose sizes can not change.
 _SIZED_FIELDS = {'node', 'link'}
 
-
-def _sort_points_into_quadrants(x, y, nodes):
-    """Divide x, y points into quadrants.
-
-    Divide points with locations given in the *x*, and *y* arrays into north,
-    south, east, and west quadrants. Returns nodes contained in quadrants
-    (west, east, north, south).
-
-    Parameters
-    ----------
-    x : array_like
-        X-coordinates of points.
-    y : array_like
-        Y-coordinates of points.
-    nodes : array_like
-        Nodes associated with points.
-
-    Returns
-    -------
-    tuple of array_like
-        Tuple of nodes in each coordinate. Nodes are grouped as
-        (*east*, *north*, *west*, *south*).
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from landlab.grid.base import _sort_points_into_quadrants
-    >>> x = np.array([0, 1, 0, -1])
-    >>> y = np.array([1, 0, -1, 0])
-    >>> nodes = np.array([1, 2, 3, 4])
-    >>> _sort_points_into_quadrants(x, y, nodes)
-    (array([2]), array([1]), array([4]), array([3]))
-    """
-    above_x_axis = y > 0
-    right_of_y_axis = x > 0
-    closer_to_y_axis = numpy.abs(y) >= numpy.abs(x)
-
-    north_nodes = nodes[above_x_axis & closer_to_y_axis]
-    south_nodes = nodes[(~ above_x_axis) & closer_to_y_axis]
-    east_nodes = nodes[right_of_y_axis & (~ closer_to_y_axis)]
-    west_nodes = nodes[(~ right_of_y_axis) & (~ closer_to_y_axis)]
-
-    return (east_nodes, north_nodes, west_nodes, south_nodes)
-
-
 def _default_axis_names(n_dims):
     """Name of each axis.
 
@@ -113,7 +68,7 @@ def _default_axis_names(n_dims):
 
     Examples
     --------
-    >>> from landlab.grid.base import _default_axis_names
+    >>> from landlab.grid.skeleton import _default_axis_names
     >>> _default_axis_names(1)
     ('x',)
     >>> _default_axis_names(2)
@@ -140,7 +95,7 @@ def _default_axis_units(n_dims):
 
     Examples
     --------
-    >>> from landlab.grid.base import _default_axis_units
+    >>> from landlab.grid.skeleton import _default_axis_units
     >>> _default_axis_units(1)
     ('-',)
     >>> _default_axis_units(2)

@@ -264,7 +264,7 @@ class ModelGrid(SkeletonGrid):
     at_cell = {}  # : Values defined at cells
 
     def __init__(self, **kwds):
-        super(ModelGrid, self).__init__()
+        super(ModelGrid, self).__init__(**kwds)
 
         self._link_length = None
         self._all_node_distances_map = None
@@ -280,7 +280,7 @@ class ModelGrid(SkeletonGrid):
             if loc not in ('node', 'link'):
                 size = self.number_of_elements(loc)
                 ModelDataFields.new_field_location(self, loc, size=size)
-    
+
     def number_of_elements(self, name):
         """Number of instances of an element.
 
@@ -322,7 +322,7 @@ class ModelGrid(SkeletonGrid):
         except KeyError:
             raise TypeError(
                 '{name}: element name not understood'.format(name=name))
-            
+
     @property
     def node_at_cell(self):
         """Node ID associated with grid cells.
