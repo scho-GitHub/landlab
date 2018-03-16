@@ -276,10 +276,14 @@ class ModelGrid(SkeletonGrid):
         # created, and 2) so have node_x and node_y.
         # self._sort_links_by_midpoint()
 
+        # Add grid field sizes. 
         for loc in _SIZED_FIELDS:
             size = self.number_of_elements(loc)
             ModelDataFields.new_field_location(self, loc, size=size)
-
+            
+        ModelDataFields.new_field_location(self, 'grid', size=1)		
+        ModelDataFields.set_default_group(self, 'node')
+        
     def number_of_elements(self, name):
         """Number of instances of an element.
 

@@ -40,8 +40,9 @@ class NetworkModelGrid(Graph, GraphFields, SkeletonGrid):
         Graph.__init__(self, yx_of_node, links=links)
         GraphFields.__init__(self,
                              {'node': self.number_of_nodes,
-                              'link': self.number_of_links},
+                              'link': self.number_of_links,
+                              'grid': 1},
                              default_group='node')
         SkeletonGrid.__init__(self,  **kwds)
-
-        self._node_status = np.empty(self.number_of_nodes, dtype=np.uint8)
+        
+        self._node_status = np.zeros(self.number_of_nodes, dtype=np.uint8)
