@@ -68,10 +68,6 @@ def map_node_to_cell(grid, var_name, out=None):
     This function takes node values of 'var_name' and mapes that value to the
     corresponding cell area for each node.
 
-    Construction::
-
-        map_node_to_cell(grid, var_name, out=None)
-
     Parameters
     ----------
     grid : ModelGrid
@@ -118,13 +114,7 @@ def map_node_to_cell(grid, var_name, out=None):
 
 def map_mean_of_patch_nodes_to_patch(grid, var_name, ignore_closed_nodes=True,
                                      out=None):
-    """
-    Map the mean value of nodes around a patch to the patch.
-
-    Construction::
-
-        map_mean_of_patch_nodes_to_patch(grid, var_name,
-                                         ignore_closed_nodes=True, out=None)
+    """Map the mean value of nodes around a patch to the patch.
 
     Parameters
     ----------
@@ -195,13 +185,7 @@ def map_mean_of_patch_nodes_to_patch(grid, var_name, ignore_closed_nodes=True,
 
 def map_max_of_patch_nodes_to_patch(grid, var_name, ignore_closed_nodes=True,
                                     out=None):
-    """
-    Map the maximum value of nodes around a patch to the patch.
-
-    Construction::
-
-        map_max_of_patch_nodes_to_patch(grid, var_name,
-                                        ignore_closed_nodes=True, out=None)
+    """Map the maximum value of nodes around a patch to the patch.
 
     Parameters
     ----------
@@ -272,13 +256,7 @@ def map_max_of_patch_nodes_to_patch(grid, var_name, ignore_closed_nodes=True,
 
 def map_min_of_patch_nodes_to_patch(grid, var_name, ignore_closed_nodes=True,
                                     out=None):
-    """
-    Map the minimum value of nodes around a patch to the patch.
-
-    Construction::
-
-        map_min_of_patch_nodes_to_patch(grid, var_name,
-                                        ignore_closed_nodes=True, out=None)
+    """Map the minimum value of nodes around a patch to the patch.
 
     Parameters
     ----------
@@ -349,17 +327,11 @@ def map_min_of_patch_nodes_to_patch(grid, var_name, ignore_closed_nodes=True,
 
 def map_link_vector_sum_to_patch(grid, var_name, ignore_inactive_links=True,
                                  out=None):
-    """
-    Map the vector sum of links around a patch to the patch.
+    """Map the vector sum of links around a patch to the patch.
 
     The resulting vector is returned as a length-2 list, with the two
     items being arrays of the x component and the y component of the resolved
     vectors at the patches, respectively.
-
-    Construction::
-
-        map_link_vector_sum_to_patch(grid, var_name, ignore_inctive_links=True,
-                                     out=None)
 
     Parameters
     ----------
@@ -473,10 +445,6 @@ def map_link_vector_sum_to_patch(grid, var_name, ignore_inactive_links=True,
 
 def dummy_func_to_demonstrate_docstring_modification(grid, some_arg):
     """A dummy function to demonstrate automated docstring changes.
-
-    Construction::
-
-        dummy_func_to_demonstrate_docstring_modification(grid, some_arg)
 
     Parameters
     ----------
