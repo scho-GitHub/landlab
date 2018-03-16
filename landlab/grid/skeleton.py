@@ -3115,7 +3115,6 @@ add_module_functions_to_class(SkeletonGrid, 'node_and_link_mappers.py', pattern=
 # add_module_functions_to_class(ModelGrid, 'gradients.py',
 #                               pattern='calculate_*')
 add_module_functions_to_class(SkeletonGrid, 'node_and_link_gradients.py', pattern='calc_*')
-add_module_functions_to_class(SkeletonGrid, 'node_and_link_divergence.py', pattern='calc_*')
 
 
 if __name__ == '__main__':
