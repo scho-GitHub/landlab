@@ -102,60 +102,6 @@ def _sort_points_into_quadrants(x, y, nodes):
 
     return (east_nodes, north_nodes, west_nodes, south_nodes)
 
-
-def _default_axis_names(n_dims):
-    """Name of each axis.
-
-    Parameters
-    ----------
-    n_dims : int
-        Number of spatial dimensions.
-
-    Returns
-    -------
-    tuple of str
-        Name of each axis.
-
-    Examples
-    --------
-    >>> from landlab.grid.base import _default_axis_names
-    >>> _default_axis_names(1)
-    ('x',)
-    >>> _default_axis_names(2)
-    ('y', 'x')
-    >>> _default_axis_names(3)
-    ('z', 'y', 'x')
-    """
-    _DEFAULT_NAMES = ('z', 'y', 'x')
-    return _DEFAULT_NAMES[- n_dims:]
-
-
-def _default_axis_units(n_dims):
-    """Unit names for each axis.
-
-    Parameters
-    ----------
-    n_dims : int
-        Number of spatial dimensions.
-
-    Returns
-    -------
-    tuple of str
-        Units of each axis.
-
-    Examples
-    --------
-    >>> from landlab.grid.base import _default_axis_units
-    >>> _default_axis_units(1)
-    ('-',)
-    >>> _default_axis_units(2)
-    ('-', '-')
-    >>> _default_axis_units(3)
-    ('-', '-', '-')
-    """
-    return ('-', ) * n_dims
-
-
 def find_true_vector_from_link_vector_pair(L1, L2, b1x, b1y, b2x, b2y):
     r"""Separate a pair of links with vector values into x and y components.
 
