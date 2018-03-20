@@ -6,10 +6,9 @@ import numpy as np
 
 from ..graph import Graph
 from ..field import GraphFields
-from .skeleton import SkeletonGrid
 
 
-class NetworkModelGrid(Graph, GraphFields, SkeletonGrid):
+class NetworkModelGrid(Graph, GraphFields):
     """A ModelGrid of just nodes and links.
 
     Parameters
@@ -43,6 +42,5 @@ class NetworkModelGrid(Graph, GraphFields, SkeletonGrid):
                               'link': self.number_of_links,
                               'grid': 1},
                              default_group='node')
-        SkeletonGrid.__init__(self,  **kwds)
-        
+
         self._node_status = np.zeros(self.number_of_nodes, dtype=np.uint8)
