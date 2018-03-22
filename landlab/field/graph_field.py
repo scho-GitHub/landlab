@@ -150,7 +150,10 @@ class FieldDataset(dict):
     def __init__(self, *args, **kwds):
         self._name, self._size = args[0], args[1]
         self._fixed_size = bool(kwds.get('fixed_size', True))
-        self._ds = xr.Dataset()
+
+        # self._ds = xr.Dataset()
+        self._ds = kwds.pop('ds', xr.Dataset())
+
         self._units = {}
 
     @property
@@ -181,6 +184,7 @@ class FieldDataset(dict):
         if self.fixed_size and self.size is None:
             self._size = value_array.size
 
+        name = '@'.join([name, self._name])
         if name in self._ds and self._ds[name].values is value_array:
             self._ds[name].values.shape = shape_for_storage(value_array,
                                                             self.size)
@@ -207,6 +211,7 @@ class FieldDataset(dict):
 
     def __getitem__(self, name):
         if isinstance(name, six.string_types):
+            name = '@'.join([name, self._name])
             try:
                 return self._ds[name].values
             except KeyError:
@@ -218,6 +223,7 @@ class FieldDataset(dict):
         self.set_value(name, value_array)
 
     def __contains__(self, name):
+        name = '@'.join([name, self._name])
         return name in self._ds
 
     def __str__(self):
@@ -394,7 +400,7 @@ class GraphFields(object):
         """
         dataset_name = 'at_' + loc
         if loc not in self._groups:
-            setattr(self, dataset_name, FieldDataset(loc, size))
+            setattr(self, dataset_name, FieldDataset(loc, size, ds=self.ds))
             self._groups.add(loc)
         else:
             raise ValueError('{loc} location already exists'.format(loc=loc))
@@ -663,7 +669,7 @@ class GraphFields(object):
             group = kwds.pop('at', kwds.pop('centering', 'node'))
         else:
             group = args[0]
-        
+
         if group == 'grid':
             raise ValueError("ones is not supported for at='grid', if you "
                              "want to create a field at the grid, use\n"
@@ -728,8 +734,8 @@ class GraphFields(object):
         Return a new array of the data field size, filled with zeros. Keyword
         arguments are the same as that for the equivalent numpy function.
 
-        This method is not valid for the group *grid*.        
-        
+        This method is not valid for the group *grid*.
+
         See Also
         --------
         numpy.zeros : See for a description of optional keywords.
@@ -763,9 +769,9 @@ class GraphFields(object):
         Add an array of data values to a collection of fields and associate it
         with the key, *name*. Use the *copy* keyword to, optionally, add a
         copy of the provided array.
-        
+
         In the case of adding to the collection *grid*, the added field is a
-        numpy scalar rather than a numpy array. 
+        numpy scalar rather than a numpy array.
 
         Construction::
 
@@ -900,9 +906,9 @@ class GraphFields(object):
         entries, and add it to the field as *name*. The *units* keyword gives
         the units of the new fields as a string. Remaining keyword arguments
         are the same as that for the equivalent numpy function.
-        
+
         This method is not valid for the group *grid*.
-        
+
         Construction::
 
             add_empty(name, at='node', units='-', noclobber=True)
@@ -953,7 +959,7 @@ class GraphFields(object):
         add it to the field as *name*. The *units* keyword gives the units of
         the new fields as a string. Remaining keyword arguments are the same
         as that for the equivalent numpy function.
-        
+
         This method is not valid for the group *grid*.
 
         Construction::
