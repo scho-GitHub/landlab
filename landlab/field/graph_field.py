@@ -764,7 +764,9 @@ class GraphFields(object):
         return allocated
 
     def add_field(self, *args, **kwds):
-        """Add an array of values to the field.
+        """add_field(name, value_array, at='node', units='-', copy=False, noclobber=True)
+
+        Add an array of values to the field.
 
         Add an array of data values to a collection of fields and associate it
         with the key, *name*. Use the *copy* keyword to, optionally, add a
@@ -772,11 +774,6 @@ class GraphFields(object):
 
         In the case of adding to the collection *grid*, the added field is a
         numpy scalar rather than a numpy array.
-
-        Construction::
-
-            add_field(name, value_array, at='node', units='-', copy=False,
-                      noclobber=True)
 
         Parameters
         ----------
@@ -900,7 +897,9 @@ class GraphFields(object):
         ds._ds = ds._ds.drop(name)
 
     def add_empty(self, *args, **kwds):
-        """Create and add an uninitialized array of values to the field.
+        """add_empty(name, at='node', units='-', noclobber=True)
+
+        Create and add an uninitialized array of values to the field.
 
         Create a new array of the data field size, without initializing
         entries, and add it to the field as *name*. The *units* keyword gives
@@ -909,9 +908,6 @@ class GraphFields(object):
 
         This method is not valid for the group *grid*.
 
-        Construction::
-
-            add_empty(name, at='node', units='-', noclobber=True)
 
         Parameters
         ----------
@@ -953,7 +949,9 @@ class GraphFields(object):
                               units=units, copy=copy, noclobber=noclobber)
 
     def add_ones(self, *args, **kwds):
-        """Create and add an array of values, initialized to 1, to the field.
+        """add_ones(name, at='node', units='-', noclobber=True)
+
+        Create and add an array of values, initialized to 1, to the field.
 
         Create a new array of the data field size, filled with ones, and
         add it to the field as *name*. The *units* keyword gives the units of
@@ -961,10 +959,6 @@ class GraphFields(object):
         as that for the equivalent numpy function.
 
         This method is not valid for the group *grid*.
-
-        Construction::
-
-            add_ones(name, at='node', units='-', noclobber=True)
 
         Parameters
         ----------
@@ -1014,16 +1008,14 @@ class GraphFields(object):
         return data
 
     def add_zeros(self, *args, **kwds):
-        """Create and add an array of values, initialized to 0, to the field.
+        """add_zeros(name, at='node', units='-', noclobber=True)
+
+        Create and add an array of values, initialized to 0, to the field.
 
         Create a new array of the data field size, filled with zeros, and
         add it to the field as *name*. The *units* keyword gives the units of
         the new fields as a string. Remaining keyword arguments are the same
         as that for the equivalent numpy function.
-
-        Construction::
-
-            add_zeros(name, at='node', units='-', noclobber=True)
 
         Parameters
         ----------
