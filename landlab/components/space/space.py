@@ -41,6 +41,12 @@ class Space(Component):
         Critical stream power to erode sediment [E/(TL^2)]
     sp_crit_br : float
         Critical stream power to erode rock [E/(TL^2)]
+    K_noise_scale : float, optional
+        Optionally add mean zero, uncorrelated noise to the bedrock and sediment
+        K fields that is proportional to their size. Value of 0.1 cooresponds to
+        a standard deviation of 10% of the size of K. Default value is 0.
+        Maximum permissible value is 0.33. Noise is thesholded at plus/minus 3
+        standard deviations to prevent negative erodibility values.
     method : string
         Either "simple_stream_power", "threshold_stream_power", or
         "stochastic_hydrology". Method for calculating sediment
@@ -217,7 +223,7 @@ class Space(Component):
                  m_sp=None, n_sp=None, sp_crit_sed=None,
                  sp_crit_br=None, method=None, discharge_method=None,
                  area_field=None, discharge_field=None, solver='basic',
-                 dt_min=DEFAULT_MINIMUM_TIME_STEP,
+                 dt_min=DEFAULT_MINIMUM_TIME_STEP, K_noise_scale=0.0,
                  **kwds):
         """Initialize the Space model.
 
@@ -245,12 +251,12 @@ class Space(Component):
         except KeyError:
             self.soil__depth = grid.add_zeros(
                 'soil__depth', at='node', dtype=float)
-            
+
         if isinstance(grid, RasterModelGrid):
             self.link_lengths = grid.length_of_d8
         else:
             self.link_lengths = grid.length_of_link
-            
+
         try:
             self.bedrock__elevation = grid.at_node['bedrock__elevation']
         except KeyError:
@@ -288,6 +294,16 @@ class Space(Component):
         self.H_star = float(H_star)
         self.v_s = float(v_s)
         self.dt_min = dt_min
+
+        if K_noise_scale == 0.0:
+            self._add_noise = False
+        else:
+            if K_noise_scale > 0.33:
+                raise ValueError('Supplied value for K_noise_scale is greater '
+                                 'than 0.33. This is not permitted as it will '
+                                 'create negative erodability values.')
+            self._add_noise = True
+            self.noise_scale = K_noise_scale
 
         #K's and critical values can be floats, grid fields, or arrays
         if type(K_sed) is str:
@@ -517,6 +533,18 @@ class Space(Component):
         self.br_erosion_term = self.K_br * self.Q_to_the_m * \
             np.power(self.slope, self.n_sp)
 
+    def create_and_add_noise(self):
+        """ """
+        er_noise = np.random.randn(self.Er.size)
+        er_noise[er_noise > 3] = 3
+        er_noise[er_noise < -3] = -3
+        es_noise = np.random.randn(self.Es.size)
+        es_noise[es_noise > 3] = 3
+        es_noise[es_noise < -3] = -3
+
+        self.Er = ((self.K_noise_scale * er_noise) + 1.0) * self.Er
+        self.Es = ((self.K_noise_scale * es_noise) + 1.0) * self.Es
+
     def run_one_step_basic(self, dt=1.0, flooded_nodes=None, **kwds):
         """Calculate change in rock and alluvium thickness for
         a time period 'dt'.
@@ -539,6 +567,9 @@ class Space(Component):
             raise ValueError('Specify an erosion method!')
 
         self.qs_in[:] = 0
+
+        if self._add_noise:
+            self.create_and_add_noise()
 
         #iterate top to bottom through the stack, calculate qs
         # cythonized version of calculating qs_in
@@ -625,7 +656,7 @@ class Space(Component):
     def _update_flow_link_slopes(self):
         """Updates gradient between each core node and its receiver.
 
-        Used to update slope values between sub-time-steps, when we do not 
+        Used to update slope values between sub-time-steps, when we do not
         re-run flow routing.
 
         Examples
@@ -654,7 +685,7 @@ class Space(Component):
         r = self._grid.at_node['flow__receiver_node']
         slp = self._grid.at_node['topographic__steepest_slope']
         slp[:] = (z - z[r]) / self.link_lengths[self.link_to_reciever]
-        
+
     def run_with_adaptive_time_step_solver(self, dt=1.0, flooded_nodes=[],
                                            **kwds):
         """Run step with CHILD-like solver that adjusts time steps to prevent
@@ -734,6 +765,9 @@ class Space(Component):
 
             # Zero out sediment influx for new iteration
             self.qs_in[:] = 0.0
+
+            if self._add_noise:
+                self.create_and_add_noise()
 
             calculate_qs_in(np.flipud(self.stack),
                             self.flow_receivers,
