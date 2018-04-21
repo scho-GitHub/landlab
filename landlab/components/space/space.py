@@ -542,8 +542,8 @@ class Space(Component):
         es_noise[es_noise > 3] = 3
         es_noise[es_noise < -3] = -3
 
-        self.Er = ((self.K_noise_scale * er_noise) + 1.0) * self.Er
-        self.Es = ((self.K_noise_scale * es_noise) + 1.0) * self.Es
+        self.Er = ((self.noise_scale * er_noise) + 1.0) * self.Er
+        self.Es = ((self.noise_scale * es_noise) + 1.0) * self.Es
 
     def run_one_step_basic(self, dt=1.0, flooded_nodes=None, **kwds):
         """Calculate change in rock and alluvium thickness for
