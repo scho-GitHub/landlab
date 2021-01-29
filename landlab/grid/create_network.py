@@ -90,11 +90,8 @@ def create_network_from_raster(
             head_node_xy = (rmg.x_of_node[seg_i['ids'][idx_nodes[n]]], rmg.y_of_node[seg_i['ids'][idx_nodes[n]]])
             tail_node_xy = (rmg.x_of_node[seg_i['ids'][idx_nodes[n+1]]], rmg.y_of_node[seg_i['ids'][idx_nodes[n+1]]])
                 
-            #the code below is taken from the read_shapefile landlab code
-                
-            # we should expect that the head node and tail node of later links will
-            # already be part of the model grid. So we check, and add the nodes,
-            # if they don't already exist.
+            # check if head and tail nodes of a link exist in our list
+            # if they do not, add them
     
             if head_node_xy not in node_xy:
                 node_xy.append(head_node_xy)
@@ -119,11 +116,8 @@ def create_network_from_raster(
                     head_node_xy = (rmg.x_of_node[seg_i['ids'][idx_nodes[n+1]]], rmg.y_of_node[seg_i['ids'][idx_nodes[n+1]]])
                     tail_node_xy = (rmg.x_of_node[seg_n['ids'][0]], rmg.y_of_node[seg_n['ids'][0]])
                     
-                    #the code below is taken from the read_shapefile landlab code
-                
-                    # we should expect that the head node and tail node of later links will
-                    # already be part of the model grid. So we check, and add the nodes,
-                    # if they don't already exist.
+                    # check if head and tail nodes of a juncture link exist
+                    #  in our list. if they do not, add them
     
                     if head_node_xy not in node_xy:
                         node_xy.append(head_node_xy)
@@ -138,7 +132,7 @@ def create_network_from_raster(
                     # append the head and tail node ids to the link array
                     links.append((head_node__node_id, tail_node__node_id))
               
-    #get unique nodes
+    #get unique nodes (UNEEDED-- REMOVE AND TEST WITHOUT)
     xy_df = pd.DataFrame({'x': x_of_nodes, 'y': y_of_nodes})
     uniq_x_of_nodes = xy_df.drop_duplicates()['x'].values
     uniq_y_of_nodes = xy_df.drop_duplicates()['y'].values
@@ -146,10 +140,8 @@ def create_network_from_raster(
     # Create a Network Model Grid.
     x_of_node, y_of_node = zip(*node_xy)
     
-    # We want to ensure that we maintain sorting, so start by creating an
-    # unsorted network graph and sorting.
-    # The sorting is important to ensure that the fields are assigned to
-    # the correct links.
+    # Sort nodes to ensure fields are assigned to the correct locations
+    # This is done by first creating an unsorted NetworkGraph and then sorting
     graph_net = NetworkGraph((y_of_node, x_of_node), links=links, sort=False)
     sorted_nodes, sorted_links, sorted_patches = graph_net.sort()
     
