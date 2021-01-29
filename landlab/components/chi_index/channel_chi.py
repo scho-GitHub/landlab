@@ -7,7 +7,9 @@
 
 import numpy as np
 
-from landlab import Component, RasterModelGrid
+# from landlab import Component, RasterModelGrid
+from ...grid.raster import RasterModelGrid
+from ...core.model_component import Component
 
 try:
     from itertools import izip
