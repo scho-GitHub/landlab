@@ -43,14 +43,15 @@ def create_network_from_raster(
     # tuple for (start, end) for channel segment start and end locations
     channel_segment_keys = profiler.data_structure[wtrshd_key].keys()
     
-    # IDENTIFY SEGMENT CONNECTIVITY ------------------
+    # IDENTIFY CHANNEL SEGMENT CONNECTIVITY -----------------------------------
     # obtain node ids for start and end of every channel segments
     seg_starts =[seg[0] for seg in profiler.data_structure[wtrshd_key].keys()] 
     seg_ends = [seg[1] for seg in profiler.data_structure[wtrshd_key].keys()]
     
     
-    # identify channel connectivity and how to connect channels
-    # currently identifies the key of the channel seg just downstream 
+    # identify channel connectivity and how to properly link nodes
+    # at different channel junctions
+    # code currently identifies the key of the channel seg just downstream 
     # and connects first node of upstream channel to downstream channel
     for i, seg_key in enumerate(channel_segment_keys):
         connectivity = []
@@ -74,6 +75,7 @@ def create_network_from_raster(
     rmg_nodes = [] #empty list to store raster model grid node corresponding to each network model grid node    
     links = [] # empty list to store link connections between nodes
     
+    # FUNCTION TO ADD LINKS----------------------------------------------------
     # this function checks if links and corresponding nodes exist already in
     # network model grid and if they don't it adds them
     # this is called several times in loop below, and makes testing easier
@@ -100,7 +102,9 @@ def create_network_from_raster(
         tail_node__nmg_id = all_nodes_xy.index(tail_node_xy)
         # append the head and tail network node ids to the link array
         all_links.append((head_node__nmg_id, tail_node__nmg_id))     
-        
+    
+    # CREATE NETWORK MODEL GRID NODES & LINKS----------------------------------
+    # loop over all channel segments and add network model nodes
     for i, seg_key in enumerate(channel_segment_keys):
         # access data of channel segments
         seg_i = profiler.data_structure[wtrshd_key][seg_key]
@@ -206,7 +210,7 @@ def create_network_from_raster(
         # datastructure. this will be used for joining channel segments later
         seg_i['ids_nmg'] = np.array(nmg_nodes)
     
-    # Create a Network Model Grid.
+    # CREATE NETWORK MODEL GRID OBJECT-----------------------------------------
     x_of_node, y_of_node = zip(*node_xy)
     
     # We want to ensure that we maintain sorting, so start by creating an
