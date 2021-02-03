@@ -177,7 +177,6 @@ def create_network_from_raster(
                 # if no more nodes can be placed on this segment, 
                 # move to next segment
                 else:
-                    print('no more nodes')
                     upstrm_node = False
                     # add last node in segment to list of node xys
                     last_node_xy = (rmg.x_of_node[rmg_node],
