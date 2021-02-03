@@ -3,6 +3,8 @@
 Created on Fri Jan 29 14:49:07 2021
 
 @author: sahrendt
+
+This is a place to test 'create_network_from_raster.py' and plot output
 """
 
 import os
@@ -22,7 +24,7 @@ from landlab.components import FlowAccumulator, ChannelProfiler
 from landlab.components import DepressionFinderAndRouter
 # Package for plotting raster data
 from landlab.plot.imshow import imshow_grid, imshow_grid_at_node
-from landlab.grid.create_network import create_network_from_raster
+from landlab.grid.create_network_variable_link_length import create_network_from_raster
 
 
 
@@ -39,8 +41,11 @@ rmg, z = read_esri_ascii(raster_fn, name='topographic__elevation')
 rmg.status_at_node[rmg.nodes_at_right_edge] = rmg.BC_NODE_IS_FIXED_VALUE
 rmg.status_at_node[np.isclose(z, -9999.)] = rmg.BC_NODE_IS_CLOSED
 
-nmg = create_network_from_raster(rmg, node_spacing=25,
-                                 fields=['drainage_area', 'topographic__elevation'])
+nmg = create_network_from_raster(
+    rmg,
+    n_widths=30,
+    min_channel_thresh=5000,
+    fields=['drainage_area', 'topographic__elevation'])
 
 # Package for plotting networks
 from landlab.plot import graph
