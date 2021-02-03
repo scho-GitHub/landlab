@@ -48,6 +48,7 @@ def create_network_from_raster(
     seg_starts =[seg[0] for seg in profiler.data_structure[wtrshd_key].keys()] 
     seg_ends = [seg[1] for seg in profiler.data_structure[wtrshd_key].keys()]
     
+    
     # identify channel connectivity and how to connect channels
     # currently identifies the key of the channel seg just downstream 
     # and connects first node of upstream channel to downstream channel
@@ -73,8 +74,34 @@ def create_network_from_raster(
     rmg_nodes = [] #empty list to store raster model grid node corresponding to each network model grid node    
     links = [] # empty list to store link connections between nodes
     
+    # this function checks if links and corresponding nodes exist already in
+    # network model grid and if they don't it adds them
+    # this is called several times in loop below, and makes testing easier
+    def add_link(rmg, all_nodes_xy, all_links, head_node_rmg_id,
+                 tail_node_rmg_id):
+
+        # define head node xy value by calling id from raster model grid
+        head_node_xy = (rmg.x_of_node[head_node_rmg_id],
+                        rmg.y_of_node[head_node_rmg_id])
+        # define a tail node xy value by calling id from raster model grid
+        tail_node_xy = (rmg.x_of_node[tail_node_rmg_id],
+                        rmg.y_of_node[tail_node_rmg_id])
+        # if these nodes don't already exist in the array of node xy vals from
+        # another channel segment, add them
+        if head_node_xy not in all_nodes_xy:
+            all_nodes_xy.append(head_node_xy)
+        if tail_node_xy not in all_nodes_xy:
+            all_nodes_xy.append(tail_node_xy)
+        # get the index of the head and tail node from our node_xy list
+        # this is important to do in case they were added from a previous
+        # channel segment. we need to ensure the order of network nodes is 
+        # correct
+        head_node__nmg_id = all_nodes_xy.index(head_node_xy)
+        tail_node__nmg_id = all_nodes_xy.index(tail_node_xy)
+        # append the head and tail network node ids to the link array
+        all_links.append((head_node__nmg_id, tail_node__nmg_id))     
+        
     for i, seg_key in enumerate(channel_segment_keys):
-        print(i)
         # access data of channel segments
         seg_i = profiler.data_structure[wtrshd_key][seg_key]
         # create list to hold rmg node ids where nmg nodes are located
@@ -99,25 +126,10 @@ def create_network_from_raster(
             # dowsntream connecting seg
             else:
                 connect_node = connecting_seg['ids'][0]
-            # add a link for this connection
-            # add head node as first node of segment
-            head_node_xy = (rmg.x_of_node[rmg_node],
-                            rmg.y_of_node[rmg_node])
-            # add tail node as last node of downstream segment
-            tail_node_xy = (rmg.x_of_node[connect_node],
-                            rmg.y_of_node[connect_node])
-            # if these nodes don't already exist in the array of node xy vals from
-            # another channel segment, add them
-            if head_node_xy not in node_xy:
-                node_xy.append(head_node_xy)
-            if tail_node_xy not in node_xy:
-                node_xy.append(tail_node_xy)
-            # get the index of the head and tail node from our node_xy list
-            # must do this in case they weren't added with above if statements
-            head_node__node_id = node_xy.index(head_node_xy)
-            tail_node__node_id = node_xy.index(tail_node_xy)
-            # append the head and tail node ids to the link array
-            links.append((head_node__node_id, tail_node__node_id))
+            #add a link for this connection if necessary
+            add_link(rmg, node_xy, links,
+                     head_node_rmg_id=rmg_node,
+                     tail_node_rmg_id=connect_node)
                     
         # iterate over segment adding new nodes as long as there are upstream nodes
         # that can be placed on network model grid based upon node spacing
@@ -154,21 +166,11 @@ def create_network_from_raster(
                     # update rmg node with whatever this next node should be
                     rmg_next_node = seg_i['ids'][idx_next_node]
                     
-                    #LINKS: add link from this upstream node to the current node
-                    head_node_xy = (rmg.x_of_node[rmg_next_node],
-                                    rmg.y_of_node[rmg_next_node])
-                    tail_node_xy = (rmg.x_of_node[rmg_node],
-                                    rmg.y_of_node[rmg_node])
-                    # add these node xy locations to our list if we haven't already
-                    if head_node_xy not in node_xy:
-                        node_xy.append(head_node_xy)
-                    if tail_node_xy not in node_xy:
-                        node_xy.append(tail_node_xy)
-                    # get the index of the head and tail node index.
-                    head_node__node_id = node_xy.index(head_node_xy)
-                    tail_node__node_id = node_xy.index(tail_node_xy)
-                    # append the head and tail node ids to the link array
-                    links.append((head_node__node_id, tail_node__node_id))
+                    # add link from this upstream node to the current node
+                    # if necessary
+                    add_link(rmg, node_xy, links,
+                             head_node_rmg_id=rmg_next_node,
+                             tail_node_rmg_id=rmg_node)
     
                     # update idx_node and rmg node for next loop
                     rmg_node = rmg_next_node
