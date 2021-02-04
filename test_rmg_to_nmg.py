@@ -43,8 +43,10 @@ rmg.status_at_node[np.isclose(z, -9999.)] = rmg.BC_NODE_IS_CLOSED
 
 nmg = create_network_from_raster(
     rmg,
-    n_widths=30,
-    min_channel_thresh=5000,
+    method='variable',
+    n_widths=20,
+    # node_spacing=30,
+    min_channel_thresh=12000,
     fields=['drainage_area', 'topographic__elevation'])
 
 # Package for plotting networks
