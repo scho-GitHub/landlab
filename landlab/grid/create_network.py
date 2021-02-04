@@ -174,27 +174,33 @@ def create_network_from_raster(
         
         
     
+    
     # CREATE NETWORK MODEL GRID NODES & LINKS----------------------------------
     # loop over all channel segments and add network model nodes
     for i, seg_key in enumerate(channel_segment_keys):
+        
         # access data of channel segments
         seg_i = profiler.data_structure[wtrshd_key][seg_key]
+        
         # create list to hold rmg node ids where nmg nodes are located
         nmg_nodes = []
+        
         # identify rmg value of first node in segment
         # first nodes of channel segments will always be included in network 
         # if they don't already exist
         idx_node = 0
         rmg_node = seg_i['ids'][idx_node]
         
-        # if necessary, add link connecting first node of segment
-        # to downstream node
+        # if seg_i is connected dowstream, add link connecting first node of
+        # segment to downstream node
         if seg_i['connectivity_key'] is not None:
             channel_key = seg_i['connectivity_key']
             connecting_seg = profiler.data_structure[wtrshd_key][channel_key]
+            
             # check to make sure there are nmg nodes on downstream segment
             if len(connecting_seg['ids_nmg']) > 0:
                 connect_node = connecting_seg['ids_nmg'][-1]
+            
             # if there are no nmg nodes on the downstream segment
             # it must be too short for calculated node spacing
             # if this is the case, connect upstream segment to first node in 
@@ -205,22 +211,20 @@ def create_network_from_raster(
             add_link(rmg, node_xy, links,
                      head_node_rmg_id=rmg_node,
                      tail_node_rmg_id=connect_node)
-                    
+        
         # iterate over segment adding new nodes as long as there are upstream nodes
         # that can be placed on network model grid based upon node spacing
         upstrm_node=True
         while upstrm_node is True:
-            # identify x and y of this node
-            # x_of_node, y_of_node = rmg.x_of_node[rmg_node], rmg.y_of_node[rmg_node]
-            
+
             # if we haven't already stored the rmg id value for this new node
             # add it to our master list of rmg nodes and sub-list of nmg nodes
             if rmg_node not in rmg_nodes:
                 rmg_nodes.append(rmg_node)
                 nmg_nodes.append(rmg_node)
             
-            # calculate node spacing as n_channel_widths or assign it a
-            # constant value from input param
+            # Assign node spacing as n_channel_widths or a constant value from
+            # input params
             if method is 'variable':
                 #calculate drainage area contributing to this node
                 da_node = rmg.at_node['drainage_area'][rmg_node]
@@ -231,7 +235,7 @@ def create_network_from_raster(
                 node_spacing = n_widths*w_channel
             if method is 'constant':
                 node_spacing = d_node_spacing
-
+            
             # if stable node spacing is greater than raster grid resolution
             if node_spacing > rmg.dx:
                 #optimal along-channel node location based upon node spacing
@@ -239,6 +243,7 @@ def create_network_from_raster(
                 # define tolerance to not add extra node if opt loc is within half  
                 # a node spacing away from end of segment 
                 buffer_tol = 0.5*node_spacing
+                
                 # if we can fit another node on the channel segment
                 if opt_loc < (seg_i['distances'][-1] - buffer_tol):
                     # find id of node closest to this location
@@ -251,7 +256,7 @@ def create_network_from_raster(
                     add_link(rmg, node_xy, links,
                              head_node_rmg_id=rmg_next_node,
                              tail_node_rmg_id=rmg_node)
-    
+                    
                     # update idx_node and rmg node for next loop
                     rmg_node = rmg_next_node
                     idx_node = idx_next_node
@@ -270,12 +275,14 @@ def create_network_from_raster(
             # move to next segment
             else:
                 upstrm_node = False
+                
                 # if we are seeing links on main stem channels that are smaller
                 # then grid resolution, flag this and break code
                 if 'connected upstream' in seg_i['connectivity']:
                     raise ValueError(
                         'main stem link lengths are smaller than grid res.'\
                         'try increasing n_widths or changing a and b params')
+                
                 # add last node in segment to list of node xys
                 last_node_xy = (rmg.x_of_node[rmg_node],
                                 rmg.y_of_node[rmg_node])
@@ -289,10 +296,9 @@ def create_network_from_raster(
     # CREATE NETWORK MODEL GRID OBJECT-----------------------------------------
     x_of_node, y_of_node = zip(*node_xy)
     
-    # We want to ensure that we maintain sorting, so start by creating an
-    # unsorted network graph and sorting.
-    # The sorting is important to ensure that the fields are assigned to
-    # the correct links.
+    # Maintain sorting by creating an unsorted network graph and sorting.
+    # This process is important to ensure that the fields are assigned to the
+    # correct links.
     graph_net = NetworkGraph((y_of_node, x_of_node), links=links, sort=False)
     sorted_nodes, sorted_links, sorted_patches = graph_net.sort()
     
@@ -302,8 +308,8 @@ def create_network_from_raster(
         np.vstack((graph_net.node_at_link_head, graph_net.node_at_link_tail)).T
     )
     
-    #add extra fields to network model grid: elevation, RMG node locations,
-    # drainage area from flow accumulator
+    #add RMG node locations and extra fields to network model grid from 
+    # raster model grid
     nmg.at_node['rmg_node_value'] = np.array(rmg_nodes)[sorted_nodes]
     if fields is None:
         fields = []
