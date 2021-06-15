@@ -599,7 +599,7 @@ class ChiFinder(Component):
             A matplotlib-style string for the style to use for the line, if
             plot_line.
         """
-        from matplotlib.pyplot import plot, xlabel, ylabel, figure, clf
+        from matplotlib.pyplot import clf, figure, plot, xlabel, ylabel
 
         figure("Chi plot")
         clf()
